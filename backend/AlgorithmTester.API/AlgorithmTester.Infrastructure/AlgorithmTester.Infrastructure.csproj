@@ -7,9 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Folder Include="Algorithms\GeneticAlgorithm\" />
     <Folder Include="FileSystem\" />
     <Folder Include="Reports\" />
     <Folder Include="PDF\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.22" />
   </ItemGroup>
 
 </Project>
