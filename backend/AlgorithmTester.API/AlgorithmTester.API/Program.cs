@@ -1,4 +1,34 @@
+using System.Text.Json;
+using AlgorithmTester.API;
+using Fleck;
+
+
 var builder = WebApplication.CreateBuilder(args);
+
+
+//Websocket
+
+var wsConnections = new List<IWebSocketConnection>();
+
+var server = new WebSocketServer("ws://0.0.0.0:8181");
+server.Start(ws =>
+{
+    ws.OnOpen = () =>
+    {
+        wsConnections.Add(ws);
+    };
+
+    ws.OnMessage = message =>
+    {
+        var obj = JsonSerializer.Deserialize<AlgorithmRequest>(message);
+
+        foreach(var param in obj.ParamInfoList)
+        {
+            Console.WriteLine(param.Name);
+        }
+    };
+
+});
 
 // Add services to the container.
 builder.Services.AddRazorPages();
