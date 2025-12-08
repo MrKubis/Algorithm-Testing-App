@@ -1,40 +1,16 @@
 using System.Text.Json;
 using AlgorithmTester.API;
-using Fleck;
+using Microsoft.AspNetCore.WebSockets;
 
 
 var builder = WebApplication.CreateBuilder(args);
 
 
-//Websocket
-
-var wsConnections = new List<IWebSocketConnection>();
-
-var server = new WebSocketServer("ws://0.0.0.0:8181");
-server.Start(ws =>
-{
-    ws.OnOpen = () =>
-    {
-        wsConnections.Add(ws);
-    };
-
-    ws.OnMessage = message =>
-    {
-        var obj = JsonSerializer.Deserialize<AlgorithmRequest>(message);
-
-        foreach(var param in obj.ParamInfoList)
-        {
-            Console.WriteLine(param.Name);
-        }
-    };
-
-});
 
 // Add services to the container.
-builder.Services.AddRazorPages();
+builder.Services.AddControllers();
 
 var app = builder.Build();
-
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -43,6 +19,14 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
+app.UseWebSockets();
+
+var webSocketOptions = new WebSocketOptions()
+{
+    KeepAliveInterval = TimeSpan.FromSeconds(120),
+};
+app.UseWebSockets(webSocketOptions);
+app.MapControllers();
 app.UseStaticFiles();
 
 app.UseRouting();
