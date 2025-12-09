@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\AlgorithmTester.Domain\AlgorithmTester.Domain.csproj" />
+  </ItemGroup>
+
 </Project>
