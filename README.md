@@ -1,3 +1,4 @@
+# Algorithm-Testing App
 Web application made to live test metaheuristic algorithm
 
 ## WHAT IT CAN DO???? (at least in theory)
@@ -5,5 +6,16 @@ Web application made to live test metaheuristic algorithm
 + You can select a distinct function and test how different algorithms will perform=
 + Algorithm creates raports so you can stop the algorithm, save the raport and load it up later. 
 
-## BACKEND:
+## BACKEND
 Made with websockets to dynamically connect, start, terminate algorithms.
+### REQUIREMENTS
++ .NET SDK 8
++ ASP.NET-CORE RUNTIME 8
+### HOW TO RUN?
+To build and run this project run:
+```
+cd Algorithm-Testing-App/backend/AlgorithmTester.API
+dotnet restore
+dotnet build
+dotnet run
+```
