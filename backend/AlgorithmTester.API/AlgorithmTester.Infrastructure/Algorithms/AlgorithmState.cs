@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using AlgorithmTester.Infractructure;
+using AlgorithmTester.Infrastructure.Algorithms.Genetic_Algorithm;
 
 namespace AlgorithmTester.Infrastructure.Algorithms;
 

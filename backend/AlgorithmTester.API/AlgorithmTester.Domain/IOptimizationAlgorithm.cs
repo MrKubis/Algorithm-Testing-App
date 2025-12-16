@@ -12,7 +12,7 @@ namespace AlgorithmTester.Domain
     {
         string Name { get; set; }
         static void Solve(fitnessFunction f, double[] domain, params double[] parameters) { }
-        ParamInfo[] ParamsInfo { get; set; }
+        List<ParamInfo> ParamsInfo { get; set; }
         IStateWriter writer {  get; set; }
         IStateReader reader { get; set; }
         IGenerateTextReport stringReportGenerator { get; set; }

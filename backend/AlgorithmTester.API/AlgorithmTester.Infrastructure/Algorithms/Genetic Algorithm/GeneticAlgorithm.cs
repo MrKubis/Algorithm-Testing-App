@@ -1,12 +1,8 @@
-﻿using AlgorithmTester.Domain;
-using AlgorithmTester.Infrastructure.Algorithms;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text.Json;
+﻿using System.Text.Json;
+using AlgorithmTester.Domain;
+using AlgorithmTester.Infractructure;
 
-namespace AlgorithmTester.Infractructure;
+namespace AlgorithmTester.Infrastructure.Algorithms.Genetic_Algorithm;
 
 public class GeneticAlgorithm : IOptimizationAlgorithm
 {
@@ -17,7 +13,7 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
     public int NumberOfEvaluationFitnessFunction { get; set; }
 
     // --- DO ZROBIENIA ---
-    public List<ParamInfo>   ParamsInfo = [
+    public List<ParamInfo> ParamsInfo { get; set; } = new List<ParamInfo>{
         new ParamInfo{
             Name = "populationSize",
             Description = "Number of individuals in a generation",
@@ -60,10 +56,9 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
             UpperBoundary = double.PositiveInfinity,
             LowerBoundary=1
         }
-];
-        
-         
-    public IStateWriter writer { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+    }
+;
+public IStateWriter writer { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
     public IStateReader reader { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
     public IGenerateTextReport stringReportGenerator { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
     public IGeneratePDFReport pdfReportGenerator { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
@@ -79,6 +74,7 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
     private readonly Func<double[], double> _fitnessFunction;
 
     private readonly Random _random;
+    private IOptimizationAlgorithm _optimizationAlgorithmImplementation;
     private const string StateFileName = "algorithm_state.json";
 
     public GeneticAlgorithm(

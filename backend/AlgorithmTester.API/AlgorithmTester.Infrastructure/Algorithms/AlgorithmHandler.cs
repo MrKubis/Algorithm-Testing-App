@@ -13,7 +13,7 @@ namespace AlgorithmTester.Infrastructure.Algorithms
             AlgorithmRequest request,
             CancellationToken cancellationToken)
         {
-
+            Console.WriteLine("Performing algorithm: "+request.AlgorithmName);
         }
     }
 }

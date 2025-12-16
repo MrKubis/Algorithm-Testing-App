@@ -1,6 +1,6 @@
 using System.Net;
 using System.Security.Cryptography;
-using AlgorithmTester.Application.Algorithm;
+using AlgorithmTester.Application;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AlgorithmTester.API.Controllers;

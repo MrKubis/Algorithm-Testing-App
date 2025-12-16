@@ -6,12 +6,12 @@ using System.Text.Json;
 using AlgorithmTester.Domain.requests;
 using AlgorithmTester.Infrastructure.Algorithms;
 
-namespace AlgorithmTester.Application.Algorithm;
+namespace AlgorithmTester.Application;
 
 public class WebSocketHandler
 {
     private static Task? _algorithmTask;
-    private static CancellationTokenSource _cts;
+    private static CancellationTokenSource? _cts;
 
     public static async Task Echo(WebSocket webSocket)
     {
@@ -19,9 +19,9 @@ public class WebSocketHandler
 
     //Zapelnienie bufora wiadomością
     bool algorithmStateLoaded = false;
-        AlgorithmRequest currentState = null;
+        AlgorithmRequest? currentState = null;
+        AlgorithmCommand? currentCommand = null;
         
-        AlgorithmCommand currentCommand = null;
         bool isRunning = false;
         //Obsługa websocketa
         while(webSocket.State == WebSocketState.Open)
@@ -62,6 +62,7 @@ public class WebSocketHandler
                     //SEND COMMAND
                     if (wsMessage.Command.ValueKind != JsonValueKind.Undefined)
                     {
+                        Console.WriteLine("xddd");
                         if (currentState == null) throw new InvalidDataException("Current state is null");
                         currentCommand = JsonSerializer.Deserialize<AlgorithmCommand>(wsMessage.Command);
 
@@ -70,11 +71,11 @@ public class WebSocketHandler
                             case "start":
                                 {
                                     if (isRunning) throw new InvalidDataException("Algorithm already is started");
-                                    
+                                    if (_cts != null) throw new Exception("Already have cancellation token");
                                     _cts = new CancellationTokenSource();
-                                    _algorithmTask = Task.Run(() =>
+                                    _algorithmTask = Task.Run(async () =>
                                     {
-                                        AlgorithmHandler.RunAlgorithmAsync(currentState, _cts.Token);
+                                        await AlgorithmHandler.RunAlgorithmAsync(currentState, _cts.Token);
                                     });
                                     
                                     isRunning = true;
@@ -84,7 +85,7 @@ public class WebSocketHandler
                             case "stop":
                                 {
                                     if (!isRunning) throw new InvalidDataException("Algorithm is not running");
-
+                                    if(_cts == null) throw new Exception("No cancellation token");
                                     _cts.Cancel();
                                     try
                                     {
