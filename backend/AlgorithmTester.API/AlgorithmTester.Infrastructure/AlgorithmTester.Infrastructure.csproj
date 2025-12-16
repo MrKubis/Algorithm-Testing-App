@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Algorithms\GeneticAlgorithm\" />
     <Folder Include="FileSystem\" />
     <Folder Include="Reports\" />
     <Folder Include="PDF\" />
@@ -15,6 +14,10 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.22" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AlgorithmTester.Domain\AlgorithmTester.Domain.csproj" />
   </ItemGroup>
 
 </Project>

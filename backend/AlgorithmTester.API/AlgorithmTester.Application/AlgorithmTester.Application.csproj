@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AlgorithmTester.Domain\AlgorithmTester.Domain.csproj" />
+    <ProjectReference Include="..\AlgorithmTester.Infrastructure\AlgorithmTester.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>
