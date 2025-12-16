@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace gen_algo
+namespace AlgorithmTester.Infractructure;
 {
     public class FunctionProvider
     {

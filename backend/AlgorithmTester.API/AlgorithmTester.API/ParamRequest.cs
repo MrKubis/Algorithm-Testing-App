@@ -1,6 +1,6 @@
 ﻿namespace AlgorithmTester.API
 {
-    public class ParamInfo
+    public class ParamRequest
     {
         public string Name { get; set; }
         public string Description { get; set; }
