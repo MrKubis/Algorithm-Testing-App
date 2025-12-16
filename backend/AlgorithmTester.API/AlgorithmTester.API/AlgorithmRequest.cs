@@ -9,7 +9,7 @@ namespace AlgorithmTester.API
     public class AlgorithmRequest
     {
         public string AlgorithmName { get; set; }
-        public List<ParamInfo> ParamInfoList { get; set; }
+        public List<ParamRequest> ParamRequestList { get; set; }
         public int Steps { get; set; }
         public string[] FunctionList { get; set; }
     }

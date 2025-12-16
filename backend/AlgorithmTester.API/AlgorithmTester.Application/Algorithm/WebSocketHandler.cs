@@ -4,17 +4,23 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using AlgorithmTester.Domain.requests;
+using AlgorithmTester.Infrastructure.Algorithms;
 
 namespace AlgorithmTester.Application.Algorithm;
 
 public class WebSocketHandler
 {
-    public static async Task Echo(WebSocket webSocket)
-    {       
-        //Zapelnienie bufora wiadomością
-        bool algorithmStateLoaded = false;
-        AlgorithmRequest currentState = null;
+    private static Task? _algorithmTask;
+    private static CancellationTokenSource _cts;
 
+    public static async Task Echo(WebSocket webSocket)
+    {
+
+
+    //Zapelnienie bufora wiadomością
+    bool algorithmStateLoaded = false;
+        AlgorithmRequest currentState = null;
+        
         AlgorithmCommand currentCommand = null;
         bool isRunning = false;
         //Obsługa websocketa
@@ -64,27 +70,40 @@ public class WebSocketHandler
                             case "start":
                                 {
                                     if (isRunning) throw new InvalidDataException("Algorithm already is started");
+                                    
+                                    _cts = new CancellationTokenSource();
+                                    _algorithmTask = Task.Run(() =>
+                                    {
+                                        AlgorithmHandler.RunAlgorithmAsync(currentState, _cts.Token);
+                                    });
+                                    
                                     isRunning = true;
-                                    Console.WriteLine(
-                                        "Running: \n" +
-                                        currentState.AlgorithmName + "\n" +
-                                        currentState.Step + "\n" +
-                                        currentCommand.RequestedState);
-                                    //TODO
-                                    //START ALGORITHM -> GO TO INFRASTRUCTURE
+                                    Console.WriteLine("Algorithm started");
                                     break;
                                 }
                             case "stop":
                                 {
                                     if (!isRunning) throw new InvalidDataException("Algorithm is not running");
-                                    Console.WriteLine(
-                                        "Stopping: \n" +
-                                        currentState.AlgorithmName + "\n" +
-                                        currentState.Step + "\n" +
-                                        currentCommand.RequestedState);
+
+                                    _cts.Cancel();
+                                    try
+                                    {
+                                        if (_algorithmTask != null)
+                                            await _algorithmTask;
+
+                                        //TUTAJ BĘDZIE RAPORTOWANIE
+                                    }
+                                    catch
+                                    {
+
+                                    }
+                                    _cts.Dispose();
+                                    _cts = null;
+                                    _algorithmTask = null;
+
                                     isRunning = false;
-                                    //TODO
-                                    //STOP ALGORITHM -> GO TO INFRASTRUCTURE
+                                    Console.WriteLine("Algorithm has stopped");
+
                                     break;
                                 }
                             default:
