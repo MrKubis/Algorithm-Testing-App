@@ -1,6 +1,5 @@
 ﻿using System.Text.Json;
 using AlgorithmTester.Domain;
-using AlgorithmTester.Infractructure;
 
 namespace AlgorithmTester.Infrastructure.Algorithms.Genetic_Algorithm;
 
