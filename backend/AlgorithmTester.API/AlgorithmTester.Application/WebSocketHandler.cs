@@ -54,6 +54,8 @@ public class WebSocketHandler
                         if (isRunning) throw new InvalidDataException("Algorithm already is started");
                         if (wsMessage.Request.ValueKind == JsonValueKind.Null) throw new InvalidDataException("Request is empty");
                         currentState = JsonSerializer.Deserialize<AlgorithmRequest>(wsMessage.Request);
+                        //Validate request
+                        if (AlgorithmRequestValidator.Validate(currentState)) algorithmStateLoaded = true;
                     }
 
                     //SEND COMMAND
