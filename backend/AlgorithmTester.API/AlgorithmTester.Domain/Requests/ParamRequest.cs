@@ -1,4 +1,4 @@
-﻿namespace AlgorithmTester.API
+﻿namespace AlgorithmTester.Domain.Requests
 {
     public class ParamRequest
     {

@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
-namespace AlgorithmTester.Domain
+namespace AlgorithmTester.Domain.Interfaces
 {
     public delegate double fitnessFunction(params double[] arg);
     public interface IOptimizationAlgorithm

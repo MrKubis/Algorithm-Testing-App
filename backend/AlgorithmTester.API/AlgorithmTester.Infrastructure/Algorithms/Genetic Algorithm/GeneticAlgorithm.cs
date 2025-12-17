@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using AlgorithmTester.Domain;
+using AlgorithmTester.Domain.Interfaces;
 
 namespace AlgorithmTester.Infrastructure.Algorithms.Genetic_Algorithm;
 
@@ -73,7 +74,6 @@ public IStateWriter writer { get => throw new NotImplementedException(); set => 
     private readonly Func<double[], double> _fitnessFunction;
 
     private readonly Random _random;
-    private IOptimizationAlgorithm _optimizationAlgorithmImplementation;
     private const string StateFileName = "algorithm_state.json";
 
     public GeneticAlgorithm(

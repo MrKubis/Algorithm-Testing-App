@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using AlgorithmTester.Domain.requests;
+using AlgorithmTester;
+using AlgorithmTester.Domain.Requests;
+using AlgorithmTester.Domain.Validators;
 
 namespace AlgorithmTester.Infrastructure.Algorithms
 {
@@ -13,7 +15,18 @@ namespace AlgorithmTester.Infrastructure.Algorithms
             AlgorithmRequest request,
             CancellationToken cancellationToken)
         {
-            Console.WriteLine("Performing algorithm: "+request.AlgorithmName);
-        }
+            if(request.Steps == null) { throw new Exception("Steps not defined"); }
+
+            //Jeżeli uruchamiamy już wcześniej zaczęty algorytm
+            if(request.Step != null && request.Step > 0)
+            {
+                if (request.Step > request.Steps) throw new Exception("Starting step is bigger than steps");
+            }
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+
+            }
+            }
     }
 }
