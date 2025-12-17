@@ -13,8 +13,17 @@ namespace AlgorithmTester.Infrastructure.Algorithms
     {
         public static async Task RunAlgorithmAsync(
             AlgorithmRequest request,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken      
+            )
         {
+
+            // Dostaje request
+            // Sprawdza jaki algorytm
+            // Sprawdza parametry
+            // Sprawdza krok
+
+            // Robi pętle ile jest generacji ( Steps - Step ) 
+
             if(request.Steps == null) { throw new Exception("Steps not defined"); }
 
             //Jeżeli uruchamiamy już wcześniej zaczęty algorytm
@@ -26,7 +35,21 @@ namespace AlgorithmTester.Infrastructure.Algorithms
             while (!cancellationToken.IsCancellationRequested)
             {
 
+                // Algorithm State
+
+                // i = step / 0
+                // state = null
+                // While i < Steps
+                // Solve(state) -> State
+                // state = State
+
+                // Handler wysyła AlgorithmState końcowy
+
             }
+            if (cancellationToken.IsCancellationRequested)
+            {
+
             }
+        }
     }
 }

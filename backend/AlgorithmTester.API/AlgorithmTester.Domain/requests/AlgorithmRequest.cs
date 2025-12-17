@@ -11,12 +11,9 @@ namespace AlgorithmTester.Domain.Requests
     {
         [Required]
         public string AlgorithmName { get; set; }
+
         [Required]
-        public List<ParamRequest> ParamRequestList { get; set; }
-        [Required]
-        public int Steps { get; set; }
-        public int? Step {get; set;}
-        public double[]? X { get; set; }
+        public AlgorithmState AlgorithmState {get; set;}
         [Required]
         public string[] FunctionList { get; set; }
     }

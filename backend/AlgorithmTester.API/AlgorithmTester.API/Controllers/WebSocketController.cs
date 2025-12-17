@@ -7,7 +7,7 @@ namespace AlgorithmTester.API.Controllers;
 
 public class WebSocketController : ControllerBase
 {
-    [Route("/ws")]
+    [Route("/ws/algorithm")]
     public async Task Get()
     {
         if (HttpContext.WebSockets.IsWebSocketRequest)
@@ -20,4 +20,5 @@ public class WebSocketController : ControllerBase
             HttpContext.Response.StatusCode = StatusCodes.Status400BadRequest;
         }
     }
+    //[Route("/ws/function")]
 }
