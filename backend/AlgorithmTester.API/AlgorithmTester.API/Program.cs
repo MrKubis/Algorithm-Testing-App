@@ -5,10 +5,19 @@ using Microsoft.AspNetCore.WebSockets;
 
 var builder = WebApplication.CreateBuilder(args);
 
-
-
 // Add services to the container.
 builder.Services.AddControllers();
+
+// Add CORS policy
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", builder =>
+    {
+        builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader();
+    });
+});
 
 var app = builder.Build();
 // Configure the HTTP request pipeline.
@@ -26,6 +35,10 @@ var webSocketOptions = new WebSocketOptions()
     KeepAliveInterval = TimeSpan.FromSeconds(120),
 };
 app.UseWebSockets(webSocketOptions);
+
+// Enable CORS
+app.UseCors("AllowAll");
+
 app.MapControllers();
 app.UseStaticFiles();
 
