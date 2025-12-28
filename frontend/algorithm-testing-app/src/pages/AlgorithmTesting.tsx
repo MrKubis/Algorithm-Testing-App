@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Header } from "../components/Header";
 import { AlgorithmSelector } from "../components/AlgorithmSelector";
 import { ControlPanel } from "../components/ControlPanel";
@@ -9,33 +9,28 @@ import { Log } from "../components/LogEntry";
 import "../css/AlgorithmTesting.css";
 
 const AlgorithmTesting: React.FC = () => {
-  const algorithms: Algorithm[] = [
-    {
-      id: "bubble_sort",
-      name: "Bubble Sort",
-      description: "Simple sorting algorithm",
-    },
-    {
-      id: "quick_sort",
-      name: "Quick Sort",
-      description: "Fast divide-and-conquer sorting",
-    },
-    {
-      id: "merge_sort",
-      name: "Merge Sort",
-      description: "Stable divide-and-conquer sorting",
-    },
-    {
-      id: "linear_search",
-      name: "Linear Search",
-      description: "Sequential search algorithm",
-    },
-    {
-      id: "binary_search",
-      name: "Binary Search",
-      description: "Logarithmic search algorithm",
-    },
-  ];
+  const [algorithms, setAlgorithms] = useState<Algorithm[]>([]);
+  const [loadingAlgorithms, setLoadingAlgorithms] = useState<boolean>(true);
+  const [algorithmError, setAlgorithmError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchAlgorithms = async () => {
+      try {
+        const response = await fetch('http://localhost:5046/api/algorithms');
+        if (!response.ok) {
+          throw new Error('Failed to fetch algorithms');
+        }
+        const data = await response.json();
+        setAlgorithms(data);
+      } catch (error) {
+        setAlgorithmError(error instanceof Error ? error.message : 'Unknown error');
+      } finally {
+        setLoadingAlgorithms(false);
+      }
+    };
+
+    fetchAlgorithms();
+  }, []);
 
   const [selectedAlgorithm, setSelectedAlgorithm] = useState<string>("");
   const [isRunning, setIsRunning] = useState<boolean>(false);
@@ -113,6 +108,24 @@ const AlgorithmTesting: React.FC = () => {
   const clearLogs = (): void => {
     setLogs([]);
   };
+
+  if (loadingAlgorithms) {
+    return (
+      <div className="algorithm-testing-container">
+        <Header />
+        <div className="loading">Loading algorithms...</div>
+      </div>
+    );
+  }
+
+  if (algorithmError) {
+    return (
+      <div className="algorithm-testing-container">
+        <Header />
+        <div className="error">Error loading algorithms: {algorithmError}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="algorithm-testing-container">
