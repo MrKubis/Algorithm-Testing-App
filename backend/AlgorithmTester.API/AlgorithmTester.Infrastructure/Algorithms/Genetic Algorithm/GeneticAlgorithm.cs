@@ -73,22 +73,21 @@ public IStateWriter writer { get => throw new NotImplementedException(); set => 
     private readonly Func<double[], double> _fitnessFunction;
 
     private readonly Random _random;
-    private IOptimizationAlgorithm _optimizationAlgorithmImplementation;
     private const string StateFileName = "algorithm_state.json";
 
     public GeneticAlgorithm(
-        int populationSize,
-        int generations,
-        int geneCount,
+        double populationSize,
+        double generations,
+        double geneCount,
         double minValue,
         double maxValue,
         double mutationProbability,
         double crossoverProbability,
         Func<double[], double> fitnessFunction)
     {
-        _populationSize = populationSize;
-        _generations = generations;
-        _geneCount = geneCount;
+        _populationSize = (int)populationSize;
+        _generations = (int)generations;
+        _geneCount = (int)geneCount;
         _minValue = minValue;
         _maxValue = maxValue;
         _mutationProbability = mutationProbability;

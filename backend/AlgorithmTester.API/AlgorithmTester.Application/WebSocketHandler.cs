@@ -71,7 +71,6 @@ public class WebSocketHandler
                             case "start":
                                 {
                                     if (isRunning) throw new InvalidDataException("Algorithm already is started");
-                                    if (_cts != null) throw new Exception("Already have cancellation token");
                                     _cts = new CancellationTokenSource();
                                     _algorithmTask = Task.Run(async () =>
                                     {

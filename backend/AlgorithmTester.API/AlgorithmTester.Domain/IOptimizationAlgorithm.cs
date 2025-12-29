@@ -7,11 +7,10 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace AlgorithmTester.Domain
 {
-    public delegate double fitnessFunction(params double[] arg);
     public interface IOptimizationAlgorithm
     {
         string Name { get; set; }
-        static void Solve(fitnessFunction f, double[] domain, params double[] parameters) { }
+        void Solve(Func<double[],double> function, double[] X ) { }
         List<ParamInfo> ParamsInfo { get; set; }
         IStateWriter writer {  get; set; }
         IStateReader reader { get; set; }
