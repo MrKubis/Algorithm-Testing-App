@@ -4,7 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using AlgorithmTester.Domain;
-using AlgorithmTester.Domain.requests;
+using AlgorithmTester.Domain.Interfaces;
+using AlgorithmTester.Domain.Requests;
 using AlgorithmTester.Infractructure;
 
 namespace AlgorithmTester.Infrastructure.Algorithms
@@ -26,7 +27,7 @@ namespace AlgorithmTester.Infrastructure.Algorithms
                     IOptimizationAlgorithm algorithm = AlgorithmFactory.Create(request, function);
                     Console.WriteLine("Performing algorithm: " + request.AlgorithmName + " on function : " + request.FunctionList[i]);
 
-                    double[] X = request.Arguments;
+                    double[] X = request.ArgValues;
                     
                     // Start tej funkcji -> raport
                     for (int j = request.Step; j < request.Steps; j++)

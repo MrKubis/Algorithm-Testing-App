@@ -1,5 +1,5 @@
-using AlgorithmTester.Domain;
-using AlgorithmTester.Domain.requests;
+using AlgorithmTester.Domain.Interfaces;
+using AlgorithmTester.Domain.Requests;
 using AlgorithmTester.Infrastructure.Algorithms.Genetic_Algorithm;
 
 namespace AlgorithmTester.Infrastructure.Algorithms;

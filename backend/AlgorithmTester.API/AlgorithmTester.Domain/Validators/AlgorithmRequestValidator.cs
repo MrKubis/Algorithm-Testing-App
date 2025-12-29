@@ -11,7 +11,7 @@ namespace AlgorithmTester.Domain.Validators
             {
                 if (request.Step < 1) throw new Exception("Step must be bigger than 0");
                 if (request.Step > request.Steps) throw new Exception("Step must be smaller than Steps ammount");
-                if (request.X == null) throw new Exception("Arguments list not defined");          
+                if (request.ArgValues == null) throw new Exception("Arguments list not defined");          
             }
 
             //TODO sprawdzanie czy X mieści się w przedziałach

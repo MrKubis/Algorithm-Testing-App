@@ -101,27 +101,7 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
         _fitnessFunction = fitnessFunction;
         _random = new Random();
     }
-
-    public GeneticAlgorithm(AlgorithmRequest request, Func<double[], double> fitnessFunction)
-    {
-        var paramsDict = request.AlgorithmState.Parameters;
-        _populationSize = (int) paramsDict["populationSize"];
-        _generations = (int) paramsDict["generations"];
-        _geneCount = (int) paramsDict["geneCount"];
-        _minValue = paramsDict["minValue"];
-        _maxValue = paramsDict["maxValue"];
-        _mutationProbability = paramsDict["mutationProbability"];
-        _crossoverProbability = paramsDict["crossoverProbability"];
-
-        //Exception handling
-
-        // if (request.steps != null )
-
-        _fitnessFunction = fitnessFunction;      
-        
-        _random = new Random();
-    }
-
+    
     public double Solve()
     {
         List<Individual> population = null;
