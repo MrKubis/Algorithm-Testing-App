@@ -4,10 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AlgorithmTester.Domain
+namespace AlgorithmTester.Domain.Interfaces
 {
-    public interface IGenerateTextReport
+    public interface IArgumentState
     {
-        string ReportString { get; set; } //private set??
+        public double Fitness {  get; set; }
     }
 }

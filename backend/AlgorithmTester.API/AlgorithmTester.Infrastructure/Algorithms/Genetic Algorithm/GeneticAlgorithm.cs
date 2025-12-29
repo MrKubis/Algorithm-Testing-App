@@ -1,5 +1,7 @@
 ﻿using System.Text.Json;
 using AlgorithmTester.Domain;
+using AlgorithmTester.Domain.Interfaces;
+using AlgorithmTester.Domain.Requests;
 
 namespace AlgorithmTester.Infrastructure.Algorithms.Genetic_Algorithm;
 
@@ -11,7 +13,7 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
     public double FBest { get; set; } = double.MaxValue;
     public int NumberOfEvaluationFitnessFunction { get; set; }
 
-    // --- DO ZROBIENIA ---
+
     public List<ParamInfo> ParamsInfo { get; set; } = new List<ParamInfo>{
         new ParamInfo{
             Name = "populationSize",
@@ -57,7 +59,9 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
         }
     }
 ;
-public IStateWriter writer { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+
+    // --- DO ZROBIENIA ---
+    public IStateWriter writer { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
     public IStateReader reader { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
     public IGenerateTextReport stringReportGenerator { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
     public IGeneratePDFReport pdfReportGenerator { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
@@ -71,6 +75,8 @@ public IStateWriter writer { get => throw new NotImplementedException(); set => 
     private readonly double _mutationProbability;
     private readonly double _crossoverProbability;
     private readonly Func<double[], double> _fitnessFunction;
+
+    private AlgorithmState _state;
 
     private readonly Random _random;
     private const string StateFileName = "algorithm_state.json";
@@ -93,6 +99,26 @@ public IStateWriter writer { get => throw new NotImplementedException(); set => 
         _mutationProbability = mutationProbability;
         _crossoverProbability = crossoverProbability;
         _fitnessFunction = fitnessFunction;
+        _random = new Random();
+    }
+
+    public GeneticAlgorithm(AlgorithmRequest request, Func<double[], double> fitnessFunction)
+    {
+        var paramsDict = request.AlgorithmState.Parameters;
+        _populationSize = (int) paramsDict["populationSize"];
+        _generations = (int) paramsDict["generations"];
+        _geneCount = (int) paramsDict["geneCount"];
+        _minValue = paramsDict["minValue"];
+        _maxValue = paramsDict["maxValue"];
+        _mutationProbability = paramsDict["mutationProbability"];
+        _crossoverProbability = paramsDict["crossoverProbability"];
+
+        //Exception handling
+
+        // if (request.steps != null )
+
+        _fitnessFunction = fitnessFunction;      
+        
         _random = new Random();
     }
 

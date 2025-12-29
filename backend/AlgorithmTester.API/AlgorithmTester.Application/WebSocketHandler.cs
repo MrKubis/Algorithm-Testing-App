@@ -3,7 +3,8 @@ using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
-using AlgorithmTester.Domain.requests;
+using AlgorithmTester.Domain.Requests;
+using AlgorithmTester.Domain.Validators;
 using AlgorithmTester.Infrastructure.Algorithms;
 
 namespace AlgorithmTester.Application;
@@ -15,13 +16,10 @@ public class WebSocketHandler
 
     public static async Task Echo(WebSocket webSocket)
     {
-
-
     //Zapelnienie bufora wiadomością
-    bool algorithmStateLoaded = false;
+        bool algorithmStateLoaded = false;
         AlgorithmRequest? currentState = null;
         AlgorithmCommand? currentCommand = null;
-        
         bool isRunning = false;
         //Obsługa websocketa
         while(webSocket.State == WebSocketState.Open)
@@ -56,7 +54,8 @@ public class WebSocketHandler
                         if (isRunning) throw new InvalidDataException("Algorithm already is started");
                         if (wsMessage.Request.ValueKind == JsonValueKind.Null) throw new InvalidDataException("Request is empty");
                         currentState = JsonSerializer.Deserialize<AlgorithmRequest>(wsMessage.Request);
-                        algorithmStateLoaded = true;
+                        //Validate request
+                        if (AlgorithmRequestValidator.Validate(currentState)) algorithmStateLoaded = true;
                     }
 
                     //SEND COMMAND

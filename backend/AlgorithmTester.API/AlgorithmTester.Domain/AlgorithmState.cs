@@ -1,6 +1,6 @@
-﻿using AlgorithmTester.Infrastructure.Algorithms.Genetic_Algorithm;
+﻿using AlgorithmTester.Domain.Algorithms.Genetic_Algorithm;
 
-namespace AlgorithmTester.Infrastructure.Algorithms;
+namespace AlgorithmTester.Domain;
 
 public class AlgorithmState
 {

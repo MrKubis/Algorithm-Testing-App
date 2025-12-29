@@ -4,10 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AlgorithmTester.Domain
+namespace AlgorithmTester.Domain.Interfaces
 {
-    public interface IStateReader
+    public interface IStateWriter
     {
-        void LoadFromFileStateOfAlgorithm(string path);
+        void SaveToFileStateOfAlgorithm(string path);
     }
 }

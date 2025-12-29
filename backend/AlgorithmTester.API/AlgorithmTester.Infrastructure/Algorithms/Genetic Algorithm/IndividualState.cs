@@ -1,8 +1,11 @@
-﻿namespace AlgorithmTester.Infrastructure.Algorithms.Genetic_Algorithm
+﻿using AlgorithmTester.Domain.Interfaces;
+
+namespace AlgorithmTester.Infrastructure.Algorithms.Genetic_Algorithm
 {
-    public class IndividualState
+    public class IndividualState : IArgumentState
     {
-        public required double[] Genes { get; set; }
-        public double Fitness { get; set; }
+    public required double[] Genes { get; set; }
+    public double Fitness { get; set; }
+
     }
 }

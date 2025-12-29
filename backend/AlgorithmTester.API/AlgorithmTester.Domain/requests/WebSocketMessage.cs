@@ -5,18 +5,17 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace AlgorithmTester.Domain.requests
-{
-    public class WebSocketMessage
-    {
-        public string MessageType { get; set;  }
-        public JsonElement Request { get; set; }
-        public JsonElement Command { get; set; }
-    }
+namespace AlgorithmTester.Domain.Requests;
 
-    //Pózniej dać do enuma
-    public enum MessageType
-    {
-        REQUEST, COMMAND
-    }
+public class WebSocketMessage
+{
+    public string MessageType { get; set;  }
+    public JsonElement Request { get; set; }
+    public JsonElement Command { get; set; }
+}
+
+//Pózniej dać do enuma
+public enum MessageType
+{
+    REQUEST, COMMAND
 }

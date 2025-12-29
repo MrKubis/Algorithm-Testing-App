@@ -4,10 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AlgorithmTester.Domain
+namespace AlgorithmTester.Domain.Interfaces
 {
-    public interface IStateWriter
+    public interface IGeneratePDFReport
     {
-        void SaveToFileStateOfAlgorithm(string path);
+        void GenerateReport(string path);
     }
 }
