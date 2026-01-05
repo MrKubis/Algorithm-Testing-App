@@ -12,8 +12,7 @@ const AlgorithmTesting: React.FC = () => {
   const [algorithms, setAlgorithms] = useState<AlgorithmMetadata[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [selectedAlgoName, setSelectedAlgoName] = useState<string>("");
-  const [selectedFunction, setSelectedFunction] =
-    useState<string>("RastraginFunction");
+  const [selectedFunction, setSelectedFunction] = useState<string>("");
   const [paramValues, setParamValues] = useState<{ [key: string]: number }>({});
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [logs, setLogs] = useState<Log[]>([]);

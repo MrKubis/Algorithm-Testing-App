@@ -30,7 +30,6 @@ export const AlgorithmSelector: React.FC<AlgorithmSelectorProps> = ({
   onFunctionChange,
   disabled = false,
 }) => {
-  // Find the selected algorithm metadata to get its specific parameters
   const currentAlgo = algorithms.find((a) => a.ClassName === selectedAlgorithm);
 
   return (
