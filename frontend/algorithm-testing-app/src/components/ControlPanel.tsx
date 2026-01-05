@@ -1,47 +1,48 @@
 import React from "react";
-import { AlgorithmSelector, Algorithm } from "./AlgorithmSelector";
+import { AlgorithmSelector } from "./AlgorithmSelector";
 import { TestControls } from "./TestControls";
-import { TestResults, TestResult } from "./TestResults";
+import { TestResults } from "./TestResults";
+import { AlgorithmMetadata } from "../types";
 
 interface ControlPanelProps {
-  algorithms: Algorithm[];
+  algorithms: AlgorithmMetadata[];
   selectedAlgorithm: string;
+  parameterValues: { [key: string]: number };
+  selectedFunction: string;
   isRunning: boolean;
   progress: number;
-  testResults: TestResult | null;
-  onAlgorithmChange: (algorithmId: string) => void;
+  testResults: any;
+
+  onAlgorithmChange: (id: string) => void;
+  onParameterChange: (name: string, val: number) => void;
+  onFunctionChange: (name: string) => void;
   onStart: () => void;
   onStop: () => void;
 }
 
-export const ControlPanel: React.FC<ControlPanelProps> = ({
-  algorithms,
-  selectedAlgorithm,
-  isRunning,
-  progress,
-  testResults,
-  onAlgorithmChange,
-  onStart,
-  onStop,
-}) => {
+export const ControlPanel: React.FC<ControlPanelProps> = (props) => {
   return (
     <div className="control-panel">
       <AlgorithmSelector
-        algorithms={algorithms}
-        selectedAlgorithm={selectedAlgorithm}
-        onAlgorithmChange={onAlgorithmChange}
-        disabled={isRunning}
+        algorithms={props.algorithms}
+        selectedAlgorithm={props.selectedAlgorithm}
+        parameterValues={props.parameterValues}
+        selectedFunction={props.selectedFunction}
+        onAlgorithmChange={props.onAlgorithmChange}
+        onParameterChange={props.onParameterChange}
+        onFunctionChange={props.onFunctionChange}
+        disabled={props.isRunning}
       />
 
       <TestControls
-        isRunning={isRunning}
-        progress={progress}
-        canStart={!!selectedAlgorithm}
-        onStart={onStart}
-        onStop={onStop}
+        isRunning={props.isRunning}
+        progress={props.progress}
+        canStart={!!props.selectedAlgorithm}
+        onStart={props.onStart}
+        onStop={props.onStop}
       />
 
-      <TestResults results={testResults} />
+      <TestResults results={props.testResults} />
     </div>
   );
 };

@@ -12,5 +12,6 @@ namespace AlgorithmTester.Domain.requests
         public List<ParamInfo> ParamInfoList { get; set; }
         public int Step { get; set; }
         public string[] FunctionList { get; set; }
+        public Dictionary<string, double> Parameters { get; set; }
     }
 }

@@ -11,7 +11,7 @@ namespace AlgorithmTester.Domain
     public interface IOptimizationAlgorithm
     {
         string Name { get; set; }
-        static void Solve(fitnessFunction f, double[] domain, params double[] parameters) { }
+        double Solve(Func<double[], double> f, double[] domain, params double[] args);
         ParamInfo[] ParamsInfo { get; set; }
         IStateWriter writer {  get; set; }
         IStateReader reader { get; set; }

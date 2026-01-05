@@ -28,7 +28,14 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseWebSockets();
+app.UseStaticFiles();
+
+app.UseRouting();
+
+// Enable CORS
+app.UseCors("AllowAll");
+
+app.UseAuthorization();
 
 var webSocketOptions = new WebSocketOptions()
 {
@@ -36,14 +43,6 @@ var webSocketOptions = new WebSocketOptions()
 };
 app.UseWebSockets(webSocketOptions);
 
-// Enable CORS
-app.UseCors("AllowAll");
-
 app.MapControllers();
-app.UseStaticFiles();
-
-app.UseRouting();
-
-app.UseAuthorization();
 
 app.Run();

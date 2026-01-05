@@ -1,150 +1,169 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Header } from "../components/Header";
-import { AlgorithmSelector } from "../components/AlgorithmSelector";
 import { ControlPanel } from "../components/ControlPanel";
 import { LogsPanel } from "../components/LogsPanel";
-import { Algorithm } from "../components/AlgorithmSelector";
-import { TestResult } from "../components/TestResults";
 import { Log } from "../components/LogEntry";
+import WebSocketService from "../services/WebSocketService";
+import { AlgorithmMetadata, AlgorithmRequest } from "../types";
 import "../css/AlgorithmTesting.css";
 
 const AlgorithmTesting: React.FC = () => {
-  const [algorithms, setAlgorithms] = useState<Algorithm[]>([]);
-  const [loadingAlgorithms, setLoadingAlgorithms] = useState<boolean>(true);
-  const [algorithmError, setAlgorithmError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchAlgorithms = async () => {
-      try {
-        const response = await fetch('http://localhost:5046/api/algorithms');
-        if (!response.ok) {
-          throw new Error('Failed to fetch algorithms');
-        }
-        const data = await response.json();
-        setAlgorithms(data);
-      } catch (error) {
-        setAlgorithmError(error instanceof Error ? error.message : 'Unknown error');
-      } finally {
-        setLoadingAlgorithms(false);
-      }
-    };
-
-    fetchAlgorithms();
-  }, []);
-
-  const [selectedAlgorithm, setSelectedAlgorithm] = useState<string>("");
+  // States
+  const [algorithms, setAlgorithms] = useState<AlgorithmMetadata[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [selectedAlgoName, setSelectedAlgoName] = useState<string>("");
+  const [selectedFunction, setSelectedFunction] =
+    useState<string>("RastraginFunction");
+  const [paramValues, setParamValues] = useState<{ [key: string]: number }>({});
   const [isRunning, setIsRunning] = useState<boolean>(false);
-  const [testResults, setTestResults] = useState<TestResult | null>(null);
   const [logs, setLogs] = useState<Log[]>([]);
-  const [progress, setProgress] = useState<number>(0);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const [testResult, setTestResult] = useState<any>(null);
 
-  const addLog = (message: string, type: Log["type"] = "info"): void => {
-    const timestamp = new Date().toLocaleTimeString();
-    setLogs((prev) => [...prev, { message, type, timestamp }]);
+  // Ref
+  const selectedAlgoNameRef = useRef(selectedAlgoName);
+  useEffect(() => {
+    selectedAlgoNameRef.current = selectedAlgoName;
+  }, [selectedAlgoName]);
+
+  // Log Helper
+  const addLog = (message: string, type: Log["type"] = "info") => {
+    setLogs((prev) => [
+      ...prev,
+      { message, type, timestamp: new Date().toLocaleTimeString() },
+    ]);
   };
 
-  const startTest = async (): Promise<void> => {
-    if (!selectedAlgorithm) {
-      addLog("Please select an algorithm first", "error");
-      return;
-    }
+  // Message WS
+  const handleWsMessage = (data: any) => {
+    console.log("WS Message received:", data);
+    setLoading(false);
 
-    setIsRunning(true);
-    setProgress(0);
-    setLogs([]);
-    setTestResults(null);
-    abortControllerRef.current = new AbortController();
-
-    const algorithmName = algorithms.find(
-      (a) => a.id === selectedAlgorithm
-    )?.name;
-    addLog(`Starting test for ${algorithmName}...`, "info");
-
-    try {
-      // Simulate test execution with progress updates
-      for (let i = 0; i <= 100; i += 10) {
-        if (abortControllerRef.current?.signal.aborted) {
-          addLog("Test stopped by user", "warning");
-          break;
-        }
-
-        setProgress(i);
-        addLog(`Processing... ${i}%`, "info");
-
-        // Simulate API call delay
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      }
-
-      if (!abortControllerRef.current?.signal.aborted) {
-        setProgress(100);
-        const results: TestResult = {
-          algorithm: algorithmName || "Unknown",
-          status: "Completed",
-          executionTime: (Math.random() * 1000 + 100).toFixed(2),
-          operationsCount: Math.floor(Math.random() * 10000 + 1000),
-          memoryUsed: (Math.random() * 50 + 10).toFixed(2),
-        };
-        setTestResults(results);
-        addLog("Test completed successfully!", "success");
-      }
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error";
-      addLog(`Error: ${errorMessage}`, "error");
-    } finally {
+    if (data.type === "INIT_ALGORITHMS") {
+      const algos = data.payload as AlgorithmMetadata[];
+      setAlgorithms(algos);
+      addLog(`Loaded ${algos.length} algorithms`, "info");
+    } else if (data.type === "RESULT") {
+      setTestResult({
+        algorithm: selectedAlgoNameRef.current,
+        status: "Finished",
+        executionTime: "N/A",
+        operationsCount: 0,
+        memoryUsed: "N/A",
+        rawResult: data.value,
+      });
+      addLog(`Result received: ${data.value}`, "success");
+      setIsRunning(false);
+    } else if (data.type === "error") {
+      addLog(`Server Error: ${data.error}`, "error");
       setIsRunning(false);
     }
   };
 
-  const stopTest = (): void => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
+  // WS Connection
+  useEffect(() => {
+    let isMounted = true;
+
+    if (WebSocketService.isConnected()) {
+      setLoading(false);
     }
+
+    const initSocket = async () => {
+      try {
+        await WebSocketService.connect("ws://localhost:5046/ws", (data) => {
+          if (isMounted) handleWsMessage(data);
+        });
+
+        if (isMounted) {
+          setLoading(false);
+          addLog("Connected to Server", "success");
+        }
+      } catch (error) {
+        console.error("Failed to connect:", error);
+        if (isMounted) addLog("Connection Failed", "error");
+      }
+    };
+
+    initSocket();
+
+    return () => {
+      isMounted = false;
+      WebSocketService.disconnect();
+    };
+  }, []);
+
+  // Handlers
+  const handleAlgoChange = (name: string) => {
+    setSelectedAlgoName(name);
+
+    const selectedAlgo = algorithms.find((a) => a.ClassName === name);
+
+    const defaults: { [key: string]: number } = {};
+
+    if (selectedAlgo && selectedAlgo.ParamsInfo) {
+      selectedAlgo.ParamsInfo.forEach((param) => {
+        defaults[param.Name] = param.LowerBoundary;
+      });
+    }
+    setParamValues(defaults);
+  };
+
+  const handleParamChange = (name: string, value: number) => {
+    setParamValues((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Actions
+  const startTest = () => {
+    if (!WebSocketService.isConnected()) {
+      addLog("WebSocket not connected", "error");
+      return;
+    }
+
+    setTestResult(null);
+    setIsRunning(true);
+    addLog("Sending configuration...", "info");
+
+    const request: AlgorithmRequest = {
+      AlgorithmName: selectedAlgoName,
+      Parameters: paramValues,
+      FunctionList: [selectedFunction],
+    };
+
+    WebSocketService.sendRequest(request);
+
+    setTimeout(() => {
+      WebSocketService.sendCommand("start");
+      addLog("Algorithm started...", "info");
+    }, 100);
+  };
+
+  const stopTest = () => {
+    WebSocketService.sendCommand("stop");
+    addLog("Stop command sent", "warning");
     setIsRunning(false);
-    addLog("Test stopped", "warning");
   };
 
-  const clearLogs = (): void => {
-    setLogs([]);
-  };
-
-  if (loadingAlgorithms) {
-    return (
-      <div className="algorithm-testing-container">
-        <Header />
-        <div className="loading">Loading algorithms...</div>
-      </div>
-    );
-  }
-
-  if (algorithmError) {
-    return (
-      <div className="algorithm-testing-container">
-        <Header />
-        <div className="error">Error loading algorithms: {algorithmError}</div>
-      </div>
-    );
-  }
+  if (loading) return <div className="loading">Connecting to server...</div>;
 
   return (
     <div className="algorithm-testing-container">
       <Header />
-
       <div className="testing-layout">
         <ControlPanel
           algorithms={algorithms}
-          selectedAlgorithm={selectedAlgorithm}
+          selectedAlgorithm={selectedAlgoName}
+          parameterValues={paramValues}
+          selectedFunction={selectedFunction}
           isRunning={isRunning}
-          progress={progress}
-          testResults={testResults}
-          onAlgorithmChange={setSelectedAlgorithm}
+          progress={0}
+          testResults={testResult}
+          onAlgorithmChange={handleAlgoChange}
+          onParameterChange={handleParamChange}
+          onFunctionChange={setSelectedFunction}
           onStart={startTest}
           onStop={stopTest}
         />
-
         <div className="log-panel">
-          <LogsPanel logs={logs} onClear={clearLogs} />
+          <LogsPanel logs={logs} onClear={() => setLogs([])} />
         </div>
       </div>
     </div>

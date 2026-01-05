@@ -6,7 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 
-namespace AlgorithmTester.Infractructure;
+namespace AlgorithmTester.Infrastructure;
 
 public class GeneticAlgorithm : IOptimizationAlgorithm
 {
@@ -17,7 +17,7 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
     public int NumberOfEvaluationFitnessFunction { get; set; }
 
     // --- DO ZROBIENIA ---
-    public List<ParamInfo>   ParamsInfo = [
+    public ParamInfo[] ParamsInfo { get; set; } = [
         new ParamInfo{
             Name = "populationSize",
             Description = "Number of individuals in a generation",
@@ -69,18 +69,22 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
     public IGeneratePDFReport pdfReportGenerator { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
     // --- Parametry Konfiguracyjne ---
-    private readonly int _populationSize;
-    private readonly int _generations;
-    private readonly int _geneCount;
-    private readonly double _minValue;
-    private readonly double _maxValue;
-    private readonly double _mutationProbability;
-    private readonly double _crossoverProbability;
-    private readonly Func<double[], double> _fitnessFunction;
+    private int _populationSize;
+    private int _generations;
+    private int _geneCount;
+    private double _minValue;
+    private double _maxValue;
+    private double _mutationProbability;
+    private double _crossoverProbability;
+    private Func<double[], double> _fitnessFunction;
 
     private readonly Random _random;
     private const string StateFileName = "algorithm_state.json";
 
+    public GeneticAlgorithm()
+    {
+        _random = new Random();
+    }
     public GeneticAlgorithm(
         int populationSize,
         int generations,
@@ -88,8 +92,7 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
         double minValue,
         double maxValue,
         double mutationProbability,
-        double crossoverProbability,
-        Func<double[], double> fitnessFunction)
+        double crossoverProbability) : this()
     {
         _populationSize = populationSize;
         _generations = generations;
@@ -98,109 +101,126 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
         _maxValue = maxValue;
         _mutationProbability = mutationProbability;
         _crossoverProbability = crossoverProbability;
-        _fitnessFunction = fitnessFunction;
-        _random = new Random();
     }
 
-    public double Solve()
-    {
-        List<Individual> population = null;
-        int startGeneration = 0;
-        bool stateLoaded = false;
-
-        if (File.Exists(StateFileName))
+   public double Solve(Func<double[], double> f, double[] domain, params double[] args)
         {
-            try
-            {
-                var state = LoadState();
-                if (ValidateParameters(state))
-                {
-                    Console.WriteLine($"[INFO] Plik stanu zgodny z konfiguracją. Wznawianie od generacji {state.CurrentGeneration}.");
+            _fitnessFunction = f;
 
-                    startGeneration = state.CurrentGeneration;
-                    NumberOfEvaluationFitnessFunction = state.EvaluationsCount;
-                    XBest = state.XBest;
-                    FBest = state.FBest;
+            _populationSize = (int)args[0];
+            _generations = (int)args[1];
+            _geneCount = (int)args[2];
+            _minValue = args[3];
+            _maxValue = args[4];
+            _mutationProbability = args[5];
+            _crossoverProbability = args[6];
 
-                    population = state.Population.Select(p => new Individual(_geneCount)
-                    {
-                        Genes = p.Genes,
-                        Fitness = p.Fitness
-                    }).ToList();
-
-                    stateLoaded = true;
-                }
-                else
-                {
-                    Console.WriteLine("[WARN] Plik stanu istnieje, ale parametry (np. mutacja, populacja) są inne niż w obecnej konfiguracji. Stan zignorowany.");
-                    File.Delete(StateFileName);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[BLAD] Błąd odczytu stanu: {ex.Message}. Rozpoczynam od nowa.");
-            }
-        }
-
-        if (!stateLoaded)
-        {
-            Console.WriteLine("[INFO] Start nowych obliczeń.");
-            NumberOfEvaluationFitnessFunction = 0;
+            XBest = null;
             FBest = double.MaxValue;
-            population = InitializePopulation();
-            EvaluatePopulation(population);
-            UpdateGlobalBest(population);
+            NumberOfEvaluationFitnessFunction = 0;
+
+            return RunAlgorithmLogic();
         }
 
-        if (startGeneration >= _generations)
+        private double RunAlgorithmLogic()
         {
-            Console.WriteLine("[INFO] Algorytm zakończony we wcześniejszym przebiegu.");
+            List<Individual> population = null;
+            int startGeneration = 0;
+            bool stateLoaded = false;
+
+            if (File.Exists(StateFileName))
+            {
+                try
+                {
+                    var state = LoadState();
+                    if (ValidateParameters(state))
+                    {
+                        Console.WriteLine($"[INFO] Plik stanu zgodny z konfiguracją. Wznawianie od generacji {state.CurrentGeneration}.");
+
+                        startGeneration = state.CurrentGeneration;
+                        NumberOfEvaluationFitnessFunction = state.EvaluationsCount;
+                        XBest = state.XBest;
+                        FBest = state.FBest;
+
+                        population = state.Population.Select(p => new Individual(_geneCount)
+                        {
+                            Genes = p.Genes,
+                            Fitness = p.Fitness
+                        }).ToList();
+
+                        stateLoaded = true;
+                    }
+                    else
+                    {
+                        Console.WriteLine("[WARN] Plik stanu istnieje, ale parametry (np. mutacja, populacja) są inne niż w obecnej konfiguracji. Stan zignorowany.");
+                        File.Delete(StateFileName);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[BLAD] Błąd odczytu stanu: {ex.Message}. Rozpoczynam od nowa.");
+                }
+            }
+
+            if (!stateLoaded)
+            {
+                Console.WriteLine("[INFO] Start nowych obliczeń.");
+                NumberOfEvaluationFitnessFunction = 0;
+                FBest = double.MaxValue;
+                population = InitializePopulation();
+                EvaluatePopulation(population);
+                UpdateGlobalBest(population);
+            }
+
+            if (startGeneration >= _generations)
+            {
+                Console.WriteLine("[INFO] Algorytm zakończony we wcześniejszym przebiegu.");
+                return FBest;
+            }
+
+            for (int i = startGeneration; i < _generations; i++)
+            {
+                List<Individual> newPopulation = new List<Individual>();
+                newPopulation.Add(population.OrderBy(x => x.Fitness).First().Clone());
+                double progress = (double)i / _generations;
+
+                while (newPopulation.Count < _populationSize)
+                {
+                    Individual parent1 = TournamentSelection(population, 3);
+                    Individual parent2 = TournamentSelection(population, 3);
+                    Individual child1, child2;
+
+                    if (_random.NextDouble() < _crossoverProbability)
+                    {
+                        var children = ArithmeticCrossover(parent1, parent2);
+                        child1 = children.Item1;
+                        child2 = children.Item2;
+                    }
+                    else
+                    {
+                        child1 = parent1.Clone();
+                        child2 = parent2.Clone();
+                    }
+
+                    GaussianMutation(child1, progress);
+                    GaussianMutation(child2, progress);
+
+                    newPopulation.Add(child1);
+                    if (newPopulation.Count < _populationSize) newPopulation.Add(child2);
+                }
+
+                population = newPopulation;
+                EvaluatePopulation(population);
+                UpdateGlobalBest(population);
+
+                SaveCurrentState(i + 1, population);
+
+                if ((i + 1) % 10 == 0 || i == _generations - 1)
+                    Console.WriteLine($"[GEN {i + 1}] Najlepsza wartość FBest: {FBest}, Liczba ewaluacji: {NumberOfEvaluationFitnessFunction}");
+            }
+            File.Delete(StateFileName);
             return FBest;
         }
-
-        for (int i = startGeneration; i < _generations; i++)
-        {
-            List<Individual> newPopulation = new List<Individual>();
-            newPopulation.Add(population.OrderBy(x => x.Fitness).First().Clone());
-            double progress = (double)i / _generations;
-
-            while (newPopulation.Count < _populationSize)
-            {
-                Individual parent1 = TournamentSelection(population, 3);
-                Individual parent2 = TournamentSelection(population, 3);
-                Individual child1, child2;
-
-                if (_random.NextDouble() < _crossoverProbability)
-                {
-                    var children = ArithmeticCrossover(parent1, parent2);
-                    child1 = children.Item1;
-                    child2 = children.Item2;
-                }
-                else
-                {
-                    child1 = parent1.Clone();
-                    child2 = parent2.Clone();
-                }
-
-                GaussianMutation(child1, progress);
-                GaussianMutation(child2, progress);
-
-                newPopulation.Add(child1);
-                if (newPopulation.Count < _populationSize) newPopulation.Add(child2);
-            }
-
-            population = newPopulation;
-            EvaluatePopulation(population);
-            UpdateGlobalBest(population);
-
-            SaveCurrentState(i + 1, population);
-
-            if ((i + 1) % 10 == 0 || i == _generations - 1)
-                Console.WriteLine($"[GEN {i + 1}] Najlepsza wartość FBest: {FBest}, Liczba ewaluacji: {NumberOfEvaluationFitnessFunction}");
-        }
-        File.Delete(StateFileName);
-        return FBest;
-    }
 
     private bool ValidateParameters(AlgorithmState state)
     {

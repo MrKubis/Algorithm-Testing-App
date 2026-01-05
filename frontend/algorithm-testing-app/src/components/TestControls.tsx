@@ -18,6 +18,7 @@ export const TestControls: React.FC<TestControlsProps> = ({
   return (
     <div className="card controls">
       <h2>Test Controls</h2>
+
       <div className="button-group">
         {!isRunning ? (
           <button
@@ -25,11 +26,11 @@ export const TestControls: React.FC<TestControlsProps> = ({
             className="button button-primary"
             disabled={!canStart}
           >
-            ▶ Start Test
+            <span>▶</span> Start Test
           </button>
         ) : (
           <button onClick={onStop} className="button button-danger">
-            ⏹ Stop Test
+            <span>⏹</span> Stop Test
           </button>
         )}
       </div>
@@ -42,7 +43,7 @@ export const TestControls: React.FC<TestControlsProps> = ({
               style={{ width: `${progress}%` }}
             ></div>
           </div>
-          <p className="progress-text">{progress}% Complete</p>
+          <p className="progress-text">{progress.toFixed(0)}% Complete</p>
         </div>
       )}
     </div>

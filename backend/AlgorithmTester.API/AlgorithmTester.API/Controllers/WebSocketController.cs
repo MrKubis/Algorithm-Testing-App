@@ -5,9 +5,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AlgorithmTester.API.Controllers;
 
+[ApiController]
+[Route("/ws")]
 public class WebSocketController : ControllerBase
 {
-    [Route("/ws")]
+    [HttpGet]
     public async Task Get()
     {
         if (HttpContext.WebSockets.IsWebSocketRequest)
