@@ -8,6 +8,6 @@ public class AlgorithmRequest
     public Dictionary<string, double> ParamValues {get; set;}
     public int Step {get; set;}
     public int Steps {get; set;}
-    public double[] ArgValues {get; set;}
+    public Argument[]? Arguments {get; set;}
     public string[] FunctionList {get; set;}
 }

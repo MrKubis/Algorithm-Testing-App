@@ -10,7 +10,8 @@ namespace AlgorithmTester.Domain.Interfaces
     public interface IOptimizationAlgorithm
     {
         string Name { get; set; }
-        void Solve(Func<double[],double> function, double[] X ) { }
+        void Solve(Func<double[],double> function, Argument[] X ) { }
+        Argument[] GenerateArguments();
         List<ParamInfo> ParamsInfo { get; set; }
         IStateWriter writer {  get; set; }
         IStateReader reader { get; set; }

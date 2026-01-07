@@ -13,6 +13,7 @@ public class AlgorithmFactory
             "Genetic" => new GeneticAlgorithm(
                 request.ParamValues["populationSize"],
                 request.Steps,
+                request.Step,
                 request.ParamValues["geneCount"],
                 request.ParamValues["minValue"],
                 request.ParamValues["maxValue"],

@@ -71,7 +71,20 @@ public class WebSocketHandler
                                     _cts = new CancellationTokenSource();
                                     _algorithmTask = Task.Run(async () =>
                                     {
-                                        await AlgorithmHandler.RunAlgorithmAsync(currentState, _cts.Token);
+                                        try
+                                        {
+                                            await AlgorithmHandler.RunAlgorithmAsync(currentState, _cts.Token);
+                                            await SendMessage(webSocket, "done");
+                                        }
+                                        catch(Exception ex)
+                                        {
+                                            await SendError(webSocket, ex.Message);
+                                        }
+                                        finally
+                                        {
+                                            isRunning = false;
+
+                                        }
                                     });
                                     
                                     isRunning = true;
@@ -134,4 +147,12 @@ public class WebSocketHandler
         if (request.ValueKind == JsonValueKind.Null) throw new InvalidDataException("Request is empty");
         algorithmrequest = JsonSerializer.Deserialize<AlgorithmRequest>(request);
     } 
+    private static async Task SendMessage(WebSocket webSocket, string message)
+    {
+        var bytes = Encoding.UTF8.GetBytes(message);
+        if(webSocket.State == WebSocketState.Open)
+        {
+            await webSocket.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
+        }
+    }
 }

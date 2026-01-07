@@ -54,8 +54,8 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
         new ParamInfo{
             Name = "crossoverProbability",
             Description = "Probability of crossing two individuals",
-            UpperBoundary = double.PositiveInfinity,
-            LowerBoundary=1
+            UpperBoundary = 1,
+            LowerBoundary=0
         }
     }
 ;
@@ -76,14 +76,14 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
     private readonly double _crossoverProbability;
     private readonly Func<double[], double> _fitnessFunction;
 
-    private AlgorithmState _state;
-
+    private int _startGeneration;
     private readonly Random _random;
     private const string StateFileName = "algorithm_state.json";
 
     public GeneticAlgorithm(
         double populationSize,
         double generations,
+        double startGeneration,
         double geneCount,
         double minValue,
         double maxValue,
@@ -93,6 +93,7 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
     {
         _populationSize = (int)populationSize;
         _generations = (int)generations;
+        _startGeneration =(int) startGeneration;
         _geneCount = (int)geneCount;
         _minValue = minValue;
         _maxValue = maxValue;
@@ -101,7 +102,65 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
         _fitnessFunction = fitnessFunction;
         _random = new Random();
     }
-    
+    public void Solve(Func<double[], double> function, Argument[] X)
+    {
+        List<Individual> population = null;
+        int startGeneration = _startGeneration;
+        bool stateLoaded = false;
+
+        //Inicjalizacja populacji
+        population = InitializePopulation(X);
+        EvaluatePopulation(population);
+        UpdateGlobalBest(population);
+
+        List<Individual> newPopulation = new List<Individual>();
+        newPopulation.Add(population.OrderBy(x => x.Fitness).First().Clone());
+        double progress = (double)_startGeneration / _generations;
+
+        while (newPopulation.Count < _populationSize)
+        {
+            Individual parent1 = TournamentSelection(population, 3);
+            Individual parent2 = TournamentSelection(population, 3);
+            Individual child1, child2;
+
+            if (_random.NextDouble() < _crossoverProbability)
+            {
+                var children = ArithmeticCrossover(parent1, parent2);
+                child1 = children.Item1;
+                child2 = children.Item2;
+            }
+            else
+            {
+                child1 = parent1.Clone();
+                child2 = parent2.Clone();
+            }
+
+            GaussianMutation(child1, progress);
+            GaussianMutation(child2, progress);
+
+            newPopulation.Add(child1);
+            if (newPopulation.Count < _populationSize) newPopulation.Add(child2);
+        }
+
+        population = newPopulation;
+
+        EvaluatePopulation(population);
+        UpdateGlobalBest(population);
+
+        //Ajust population to X
+        int count = Math.Min(population.Count, X.Length);
+        for (int i = 0; i < count; i++)
+        {
+            int geneLength = Math.Min(population[i].Genes.Length, X[i].Values.Length);
+            for (int j = 0; j < geneLength; j++)
+            {
+                X[i].Values[j] = population[i].Genes[j];
+            }
+        }
+        _startGeneration++;
+    }
+
+
     public double Solve()
     {
         List<Individual> population = null;
@@ -332,5 +391,39 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
                 if (ind.Genes[i] > _maxValue) ind.Genes[i] = _maxValue;
             }
         }
+
     }
+    private List<Individual> InitializePopulation(Argument[] Arguments)
+    {
+        var population = new List<Individual>();
+        for(int i = 0;i < Arguments.Length; i++)
+        {
+            Individual individual = new Individual(Arguments[i].Values.Length);
+            for(int j = 0; j < Arguments[i].Values.Length; j++)
+            {
+                individual.Genes[j] = Arguments[i].Values[j];
+            }
+            population.Add(individual);
+        }
+        return population;
+    }
+
+    public Argument[] GenerateArguments()
+    {
+        Argument[] arguments = new Argument[_populationSize];
+        for(int i = 0; i < _populationSize; i++)
+        {
+            arguments[i] = new Argument
+            {
+                Values = new double[_geneCount]
+            };
+
+            for(int j=0; j<_geneCount; j++)
+            {
+                arguments[i].Values[j] = _minValue + (_random.NextDouble() * (_maxValue - _minValue));
+            }
+        }
+        return arguments;
+    }
+
 }
