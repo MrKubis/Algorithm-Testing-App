@@ -17,7 +17,8 @@ namespace AlgorithmTester.Domain.Interfaces
         IStateReader reader { get; set; }
         IGenerateTextReport stringReportGenerator { get; set; }
         IGeneratePDFReport pdfReportGenerator { get; set; }
-        double[] XBest { get; set; }
+        List<Argument> XFinal { get; set; }
+        Argument XBest { get; set; }
         double FBest { get; set; }
         int NumberOfEvaluationFitnessFunction { get; set; }
     }

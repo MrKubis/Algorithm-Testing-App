@@ -4,6 +4,7 @@ using System.Text.Json;
 using AlgorithmTester.Domain.Requests;
 using AlgorithmTester.Domain.Validators;
 using AlgorithmTester.Infrastructure.Algorithms;
+using AlgorithmTester.Infrastructure.Reports;
 
 namespace AlgorithmTester.Application;
 
@@ -11,10 +12,11 @@ public class WebSocketHandler
 {
     private static Task? _algorithmTask;
     private static CancellationTokenSource? _cts;
-
+    private static ReportGenerator _reportGenerator;
     public static async Task Echo(WebSocket webSocket)
     {
     //Zapelnienie bufora wiadomością
+        _reportGenerator = new ReportGenerator();
         bool algorithmStateLoaded = false;
         AlgorithmRequest? currentState = null;
         AlgorithmCommand? currentCommand = null;
@@ -73,7 +75,7 @@ public class WebSocketHandler
                                     {
                                         try
                                         {
-                                            await AlgorithmHandler.RunAlgorithmAsync(currentState, _cts.Token);
+                                            await AlgorithmHandler.RunAlgorithmAsync(currentState,_reportGenerator, _cts.Token);
                                             await SendMessage(webSocket, "done");
                                         }
                                         catch(Exception ex)
@@ -83,7 +85,7 @@ public class WebSocketHandler
                                         finally
                                         {
                                             isRunning = false;
-
+                                            await SendMessage(webSocket, _reportGenerator.ConvertReportToJSON());
                                         }
                                     });
                                     
@@ -95,24 +97,42 @@ public class WebSocketHandler
                                 {
                                     if (!isRunning) throw new InvalidDataException("Algorithm is not running");
                                     if(_cts == null) throw new Exception("No cancellation token");
+
+                                    Console.WriteLine("Stopping algorithm...");
                                     _cts.Cancel();
                                     try
                                     {
                                         if (_algorithmTask != null)
+                                        {
                                             await _algorithmTask;
+                                        }
+                                            
 
                                         //TUTAJ BĘDZIE RAPORTOWANIE
                                     }
-                                    catch
+                                    catch(OperationCanceledException)
                                     {
+                                        await SendMessage(webSocket, JsonSerializer.Serialize(new
+                                        {
+                                            type = "stopped",
+                                            message = "Algotihm cancelled successfully"
+                                        }));
+                                        await SendMessage(webSocket,_reportGenerator.ConvertReportToJSON());
+                                    }
+                                    catch(Exception ex)
+                                    {
+                                        await SendError(webSocket, $"Error while stopping: {ex.Message}");
+                                    }
+                                    finally
+                                    {
+                                        _cts.Dispose();
+                                        _cts = null;
+                                        _algorithmTask = null;
+
+                                        isRunning = false;
+                                        Console.WriteLine("Algorithm has stopped");
 
                                     }
-                                    _cts.Dispose();
-                                    _cts = null;
-                                    _algorithmTask = null;
-
-                                    isRunning = false;
-                                    Console.WriteLine("Algorithm has stopped");
 
                                     break;
                                 }

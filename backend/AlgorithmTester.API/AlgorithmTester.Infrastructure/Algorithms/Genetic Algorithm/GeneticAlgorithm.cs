@@ -9,7 +9,8 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
 {
     // --- Właściwości Interfejsu ---
     public string Name { get; set; } = "Genetic Algorithm";
-    public double[] XBest { get; set; }
+    public List<Argument> XFinal { get; set; }
+    public Argument XBest { get; set; }
     public double FBest { get; set; } = double.MaxValue;
     public int NumberOfEvaluationFitnessFunction { get; set; }
 
@@ -57,9 +58,7 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
             UpperBoundary = 1,
             LowerBoundary=0
         }
-    }
-;
-
+    };
     // --- DO ZROBIENIA ---
     public IStateWriter writer { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
     public IStateReader reader { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
@@ -147,6 +146,12 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
         EvaluatePopulation(population);
         UpdateGlobalBest(population);
 
+        XFinal = new List<Argument>();
+        foreach (Individual child in population)
+        {
+            XFinal.Add(new Argument { Values = child.Genes });
+        }
+
         //Ajust population to X
         int count = Math.Min(population.Count, X.Length);
         for (int i = 0; i < count; i++)
@@ -178,7 +183,7 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
 
                     startGeneration = state.CurrentGeneration;
                     NumberOfEvaluationFitnessFunction = state.EvaluationsCount;
-                    XBest = state.XBest;
+                    //XBest = state.XBest;
                     FBest = state.FBest;
 
                     population = state.Population.Select(p => new Individual(_geneCount)
@@ -306,7 +311,7 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
 
             CurrentGeneration = nextGenerationIndex,
             EvaluationsCount = NumberOfEvaluationFitnessFunction,
-            XBest = this.XBest,
+            //XBest = this.XBest,
             FBest = this.FBest,
             Population = population.Select(ind => new IndividualState
             {
@@ -347,7 +352,7 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
     private void UpdateGlobalBest(List<Individual> population)
     {
         var currentBest = population.OrderBy(x => x.Fitness).First();
-        if (XBest == null || currentBest.Fitness < FBest) { FBest = currentBest.Fitness; XBest = (double[])currentBest.Genes.Clone(); }
+        if (XBest == null || currentBest.Fitness < FBest) { FBest = currentBest.Fitness; XBest = new Argument { Values = currentBest.Genes }; }
     }
     private Individual TournamentSelection(List<Individual> population, int tournamentSize)
     {
