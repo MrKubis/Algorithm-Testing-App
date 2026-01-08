@@ -6,7 +6,6 @@ namespace AlgorithmTester.Domain.Validators
     {
         public static bool Validate(AlgorithmRequest request)
         {
-            Console.WriteLine(request.Step);
             if (request.Steps < 1) throw new Exception("Steps ammount must be bigger than 0");
             if (request.Step != 0)
             {

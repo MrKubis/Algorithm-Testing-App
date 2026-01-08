@@ -105,8 +105,6 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
     {
         List<Individual> population = null;
         int startGeneration = _startGeneration;
-        bool stateLoaded = false;
-
         //Inicjalizacja populacji
         population = InitializePopulation(X);
         EvaluatePopulation(population);
@@ -396,7 +394,6 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
                 if (ind.Genes[i] > _maxValue) ind.Genes[i] = _maxValue;
             }
         }
-
     }
     private List<Individual> InitializePopulation(Argument[] Arguments)
     {

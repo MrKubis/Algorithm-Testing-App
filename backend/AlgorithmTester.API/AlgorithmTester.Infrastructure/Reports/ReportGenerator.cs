@@ -19,7 +19,31 @@ namespace AlgorithmTester.Infrastructure.Reports
                 Evaluations = new List<Evaluation>()
             };
         }
-        public void CreateEvaluation(string Function, List<Argument> XFinal, Argument XBest, double FBest)
+        public void CreateEvaluation(string Function)
+        {
+            if (_algorithmReport != null && _functionReport != null)
+            {
+                throw new InvalidOperationException("Cannot add evaluation to 2 reports");
+            }
+            if (_algorithmReport != null)
+            {
+                _algorithmReport.Evaluations.Add(new Evaluation
+                {
+                    Function = Function,
+                    Step = 0
+                });
+            }
+            else if (_functionReport != null)
+            {
+
+            }
+            else
+            {
+                throw new Exception("No report created");
+            }
+        }
+
+        public void Evaluate(int i ,List<Argument> XFinal, Argument XBest, double FBest)
         {
             if (_algorithmReport != null && _functionReport != null)
             {
@@ -27,13 +51,10 @@ namespace AlgorithmTester.Infrastructure.Reports
             }
             if (_algorithmReport!= null)
             {
-                _algorithmReport.Evaluations.Add(new Evaluation
-                {
-                    Function = Function,
-                    XFinal = XFinal,
-                    XBest = XBest,
-                    FBest = FBest
-                });
+                _algorithmReport.Evaluations[i].XBest = XBest;
+                _algorithmReport.Evaluations[i].FBest = FBest;
+                _algorithmReport.Evaluations[i].XFinal = XFinal;
+                _algorithmReport.Evaluations[i].Step += 1;
 
             }
             else if (_functionReport != null)

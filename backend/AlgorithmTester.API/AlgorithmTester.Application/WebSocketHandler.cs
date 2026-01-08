@@ -45,9 +45,7 @@ public class WebSocketHandler
                     if (wsMessage.Request.ValueKind == JsonValueKind.Undefined && wsMessage.Command.ValueKind == JsonValueKind.Undefined)
                     {
                         throw new InvalidDataException("Request or command not found");
-
                     }
-
                     //LOAD ALGORITHM REQUEST TO STATE
                     if (wsMessage.Request.ValueKind != JsonValueKind.Undefined)
                     {
@@ -61,7 +59,6 @@ public class WebSocketHandler
                     //SEND COMMAND
                     if (wsMessage.Command.ValueKind != JsonValueKind.Undefined)
                     {
-                        Console.WriteLine("xddd");
                         if (currentState == null) throw new InvalidDataException("Current state is null");
                         currentCommand = JsonSerializer.Deserialize<AlgorithmCommand>(wsMessage.Command);
 
@@ -90,7 +87,6 @@ public class WebSocketHandler
                                     });
                                     
                                     isRunning = true;
-                                    Console.WriteLine("Algorithm started");
                                     break;
                                 }
                             case "stop":
@@ -98,25 +94,17 @@ public class WebSocketHandler
                                     if (!isRunning) throw new InvalidDataException("Algorithm is not running");
                                     if(_cts == null) throw new Exception("No cancellation token");
 
-                                    Console.WriteLine("Stopping algorithm...");
                                     _cts.Cancel();
                                     try
                                     {
                                         if (_algorithmTask != null)
                                         {
                                             await _algorithmTask;
-                                        }
-                                            
-
+                                        }              
                                         //TUTAJ BĘDZIE RAPORTOWANIE
                                     }
                                     catch(OperationCanceledException)
                                     {
-                                        await SendMessage(webSocket, JsonSerializer.Serialize(new
-                                        {
-                                            type = "stopped",
-                                            message = "Algotihm cancelled successfully"
-                                        }));
                                         await SendMessage(webSocket,_reportGenerator.ConvertReportToJSON());
                                     }
                                     catch(Exception ex)
@@ -130,10 +118,7 @@ public class WebSocketHandler
                                         _algorithmTask = null;
 
                                         isRunning = false;
-                                        Console.WriteLine("Algorithm has stopped");
-
                                     }
-
                                     break;
                                 }
                             default:

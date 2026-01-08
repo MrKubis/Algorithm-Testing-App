@@ -10,6 +10,7 @@ namespace AlgorithmTester.Infrastructure.Reports
 {
     public class Evaluation
     {
+        public int Step { get; set; }
         public string? Function {  get; set; }
         public List<Argument> XFinal { get; set; }
         public Argument? XBest {  get; set; }
