@@ -15,29 +15,43 @@ namespace AlgorithmTester.Infrastructure.Algorithms
     public class AlgorithmHandler
     {
         public static async Task RunAlgorithmAsync(
-            AlgorithmRequest request,
+            IRequest req,
+            string requestType,
             ReportGenerator reportGenerator,
             CancellationToken cancellationToken)  
         {
             try
             {
-                reportGenerator.CreateNewAlgorithmReport(request);
-                for (int i = 0; i < request.FunctionList.Length; i++)
+                switch (requestType)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    Func<double[], double> function = FunctionFactory.Create(request.FunctionList[i]);
-                    IOptimizationAlgorithm algorithm = AlgorithmFactory.Create(request, function);
-                    Argument[] X = HandleArguments(request.Arguments, algorithm);
-
-                    reportGenerator.CreateEvaluation(request.FunctionList[i]);
-                    for (int j = request.Step; j < request.Steps; j++)
+                    case "Algorithm":
                     {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        algorithm.Solve(function, X);
-                        reportGenerator.Evaluate(i,algorithm.XFinal, algorithm.XBest, algorithm.FBest);
+                        var request = (AlgorithmRequest)req;
+                        reportGenerator.CreateNewAlgorithmReport(request);
+                        for (int i = 0; i < request.FunctionList.Length; i++)
+                        {
+                            cancellationToken.ThrowIfCancellationRequested();
+                            Func<double[], double> function = FunctionFactory.Create(request.FunctionList[i]);
+                            IOptimizationAlgorithm algorithm = AlgorithmFactory.Create(request, function);
+                            Argument[] X = HandleArguments(request.Arguments, algorithm);
+
+                            reportGenerator.CreateEvaluation(request.FunctionList[i]);
+                            for (int j = request.Step; j < request.Steps; j++)
+                            {
+                                cancellationToken.ThrowIfCancellationRequested();
+                                algorithm.Solve(function, X);
+                                reportGenerator.Evaluate(i, algorithm.XFinal, algorithm.XBest, algorithm.FBest);
+                            }
+                        }
+                        break;
                     }
-                   }
-                return;
+
+                    case "Function":
+                    {
+                        var request = (FunctionRequest)req;
+                        break;
+                    }
+                }
             }
             //Obsługa przerwania
             catch (OperationCanceledException)
@@ -48,7 +62,6 @@ namespace AlgorithmTester.Infrastructure.Algorithms
             {
             }
         }
-
         private static Argument[] HandleArguments(Argument[]? arguments, IOptimizationAlgorithm algorithm)
         {
             if (arguments == null || arguments.Length == 0)
