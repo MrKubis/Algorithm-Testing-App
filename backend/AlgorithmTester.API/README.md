@@ -71,7 +71,7 @@ The structure of this request (example) :
             }
         ]
     }
-}
+  }
 }
 ```
 
