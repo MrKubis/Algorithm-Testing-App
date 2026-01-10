@@ -16,12 +16,15 @@ namespace AlgorithmTester.Infrastructure.Algorithms
     public class AlgorithmHandler
     {
         public delegate Task LogMessageDelegate(string message);
+        public delegate Task ProgressDelegate(int progress);
         private static LogMessageDelegate? _logCallback;
+        private static ProgressDelegate? _progressCallback;
 
         public static void SetLogCallback(LogMessageDelegate callback)
         {
             _logCallback = callback;
         }
+        public static void SetProgressCallback(ProgressDelegate callback) => _progressCallback = callback;
 
         private static async Task SendLog(string message)
         {
@@ -43,6 +46,7 @@ namespace AlgorithmTester.Infrastructure.Algorithms
             IRequest req,
             string requestType,
             ReportGenerator reportGenerator,
+            ManualResetEventSlim pauseEvent,
             CancellationToken cancellationToken)  
         {
             try
@@ -60,7 +64,9 @@ namespace AlgorithmTester.Infrastructure.Algorithms
                         
                         for (int i = 0; i < request.FunctionList.Length; i++)
                         {
+                            pauseEvent.Wait(cancellationToken);
                             cancellationToken.ThrowIfCancellationRequested();
+                            if (_progressCallback != null) await _progressCallback(0);
                             await SendLog($"Starting function {i + 1}/{request.FunctionList.Length}: {request.FunctionList[i].FunctionName}");
                             
                             Func<double[], double> function = FunctionFactory.Create(request.FunctionList[i].FunctionName);
@@ -72,14 +78,23 @@ namespace AlgorithmTester.Infrastructure.Algorithms
                             
                             for (int j = request.Step; j < request.Steps; j++)
                             {
+                                pauseEvent.Wait(cancellationToken);
                                 cancellationToken.ThrowIfCancellationRequested();
                                 algorithm.Solve(function, x);
                                 reportGenerator.Evaluate(i, algorithm.XFinal, algorithm.XBest, algorithm.FBest);
                                 
-                                // Send progress log every 10 generations or at the end
-                                if ((j + 1) % 10 == 0 || j == request.Steps - 1)
+                                // Send progress log every 5% generations or at the end
+                                if ((j + 1) % 5 == 0 || j == request.Steps - 1)
                                 {
-                                    await SendLog($"  Generation {j + 1}/{request.Steps}: Best value = {algorithm.FBest:E4}");
+                                    int currentProgress = (int)((double)(j + 1) / request.Steps * 100);
+                                    
+                                    // Call the callback if it exists
+                                    if (_progressCallback != null) 
+                                    {
+                                        await _progressCallback(currentProgress);
+                                    }
+                                    
+                                    await SendLog($"Generation {j + 1}/{request.Steps}: Best = {algorithm.FBest:E4}");
                                 }
                             }
                             await SendLog($"Completed function {request.FunctionList[i].FunctionName}");

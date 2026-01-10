@@ -8,11 +8,15 @@ interface LogsPanelProps {
 }
 
 export const LogsPanel: React.FC<LogsPanelProps> = ({ logs, onClear }) => {
-  const logsEndRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when new logs arrive
   useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (containerRef.current) {
+      const { scrollHeight, clientHeight } = containerRef.current;
+      
+      containerRef.current.scrollTop = scrollHeight - clientHeight;
+      
+    }
   }, [logs]);
 
   return (
@@ -27,13 +31,13 @@ export const LogsPanel: React.FC<LogsPanelProps> = ({ logs, onClear }) => {
           Clear
         </button>
       </div>
-      <div className="logs-container">
+      
+      <div className="logs-container" ref={containerRef}>
         {logs.length === 0 ? (
           <p className="no-logs">No logs yet. Start a test to see logs here.</p>
         ) : (
           <>
             {logs.map((log, index) => <LogEntry key={index} log={log} />)}
-            <div ref={logsEndRef} />
           </>
         )}
       </div>

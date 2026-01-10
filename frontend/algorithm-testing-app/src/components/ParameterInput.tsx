@@ -5,12 +5,14 @@ interface ParameterInputProps {
   params: AlgorithmParam[];
   onParamChange: (params: Record<string, number>) => void;
   disabled?: boolean;
+  defaultOverrides?: Record<string, number>;
 }
 
 export const ParameterInput: React.FC<ParameterInputProps> = ({
   params,
   onParamChange,
   disabled = false,
+  defaultOverrides = {},
 }) => {
   const [paramValues, setParamValues] = useState<Record<string, number>>({});
 

@@ -16,28 +16,18 @@ export const TestResults: React.FC<TestResultsProps> = ({ results }) => {
   if (!results) return null;
 
   return (
-    <div className="card results">
+    <div className="card results-card" style={{ marginTop: '20px' }}>
       <h2>Test Results</h2>
       <div className="results-grid">
         <div className="result-item">
-          <span className="result-label">Algorithm:</span>
-          <span className="result-value">{results.algorithm}</span>
+          <label>Algorithm:</label>
+          <span>{results.algorithm}</span>
         </div>
         <div className="result-item">
-          <span className="result-label">Status:</span>
-          <span className="result-value success">{results.status}</span>
-        </div>
-        <div className="result-item">
-          <span className="result-label">Execution Time:</span>
-          <span className="result-value">{results.executionTime} ms</span>
-        </div>
-        <div className="result-item">
-          <span className="result-label">Operations:</span>
-          <span className="result-value">{results.operationsCount}</span>
-        </div>
-        <div className="result-item">
-          <span className="result-label">Memory Used:</span>
-          <span className="result-value">{results.memoryUsed} MB</span>
+          <label>Status:</label>
+          <span className={`status-${results.status.toLowerCase()}`}>
+            {results.status}
+          </span>
         </div>
       </div>
     </div>
