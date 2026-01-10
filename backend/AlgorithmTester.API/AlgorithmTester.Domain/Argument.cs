@@ -6,8 +6,8 @@ using System.Threading.Tasks;
 
 namespace AlgorithmTester.Domain
 {
-    public interface IGeneratePDFReport
+    public class Argument
     {
-        void GenerateReport(string path);
+        public double[] Values { get; set; }
     }
 }

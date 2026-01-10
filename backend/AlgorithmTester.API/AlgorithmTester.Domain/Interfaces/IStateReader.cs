@@ -4,9 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AlgorithmTester.Domain
+namespace AlgorithmTester.Domain.Interfaces
 {
-    internal class FunctionRequest
+    public interface IStateReader
     {
+        void LoadFromFileStateOfAlgorithm(string path);
     }
 }

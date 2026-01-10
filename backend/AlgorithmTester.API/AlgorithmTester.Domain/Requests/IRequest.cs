@@ -4,10 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AlgorithmTester.Domain
+namespace AlgorithmTester.Domain.Requests
 {
-    public interface IGenerateTextReport
+    public interface IRequest
     {
-        string ReportString { get; set; } //private set??
+        public bool isValidated();
     }
 }

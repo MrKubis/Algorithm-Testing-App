@@ -4,9 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace AlgorithmTester.Domain.requests
+namespace AlgorithmTester.Domain.Interfaces
 {
-    internal class FunctionRequest
+    public interface IArgumentState
     {
+        public double Fitness {  get; set; }
     }
 }

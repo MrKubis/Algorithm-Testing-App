@@ -1,27 +1,25 @@
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
-using AlgorithmTester.Domain.requests;
+using AlgorithmTester.Domain.Requests;
 using AlgorithmTester.Infrastructure.Algorithms;
+using AlgorithmTester.Infrastructure.Reports;
 
-namespace AlgorithmTester.Application.Algorithm;
+namespace AlgorithmTester.Application;
 
 public class WebSocketHandler
 {
     private static Task? _algorithmTask;
-    private static CancellationTokenSource _cts;
-
+    private static CancellationTokenSource? _cts;
+    private static ReportGenerator _reportGenerator;
     public static async Task Echo(WebSocket webSocket)
     {
-
-
     //Zapelnienie bufora wiadomością
-    bool algorithmStateLoaded = false;
-        AlgorithmRequest currentState = null;
-        
-        AlgorithmCommand currentCommand = null;
+        _reportGenerator = new ReportGenerator();
+        bool algorithmStateLoaded = false;
+        string? requestType = null;
+        IRequest? currentState = null;
+        AlgorithmCommand? currentCommand = null;
         bool isRunning = false;
         //Obsługa websocketa
         while(webSocket.State == WebSocketState.Open)
@@ -47,17 +45,29 @@ public class WebSocketHandler
                     if (wsMessage.Request.ValueKind == JsonValueKind.Undefined && wsMessage.Command.ValueKind == JsonValueKind.Undefined)
                     {
                         throw new InvalidDataException("Request or command not found");
-
                     }
-
                     //LOAD ALGORITHM REQUEST TO STATE
                     if (wsMessage.Request.ValueKind != JsonValueKind.Undefined)
-                    {
-                        if (isRunning) throw new InvalidDataException("Algorithm already is started");
+                    {                       
+                        if (isRunning) throw new InvalidDataException("Algorithm/s already started");
                         if (wsMessage.Request.ValueKind == JsonValueKind.Null) throw new InvalidDataException("Request is empty");
-                        currentState = JsonSerializer.Deserialize<AlgorithmRequest>(wsMessage.Request);
+
+                        var request = JsonSerializer.Deserialize<Request>(wsMessage.Request);
+                        switch (request.Type)
+                        {
+                            case "Algorithm":
+                                currentState = JsonSerializer.Deserialize<AlgorithmRequest>(request.Body);
+                                requestType = "Algorithm";
+                                break;
+                            case "Function":
+                                currentState = JsonSerializer.Deserialize<FunctionRequest>(request.Body);
+                                requestType = "Function";
+                                break;
+                        }
+                        if (!currentState.isValidated()) { throw new Exception("Error validating request"); }
                         algorithmStateLoaded = true;
                     }
+
 
                     //SEND COMMAND
                     if (wsMessage.Command.ValueKind != JsonValueKind.Undefined)
@@ -70,40 +80,58 @@ public class WebSocketHandler
                             case "start":
                                 {
                                     if (isRunning) throw new InvalidDataException("Algorithm already is started");
-                                    
+                                    if (requestType == null) throw new InvalidDataException("No request found");
                                     _cts = new CancellationTokenSource();
-                                    _algorithmTask = Task.Run(() =>
+                                    _algorithmTask = Task.Run(async () =>
                                     {
-                                        AlgorithmHandler.RunAlgorithmAsync(currentState, _cts.Token);
+                                        try
+                                        {
+                                            await AlgorithmHandler.RunAlgorithmAsync(currentState,requestType,_reportGenerator, _cts.Token);
+                                            await SendMessage(webSocket, "done");
+                                        }
+                                        catch(Exception ex)
+                                        {
+                                            await SendError(webSocket, ex.Message);
+                                        }
+                                        finally
+                                        {
+                                            isRunning = false;
+                                            await SendMessage(webSocket, _reportGenerator.ConvertReportToJSON());
+                                        }
                                     });
                                     
                                     isRunning = true;
-                                    Console.WriteLine("Algorithm started");
                                     break;
                                 }
                             case "stop":
                                 {
-                                    if (!isRunning) throw new InvalidDataException("Algorithm is not running");
+                                    if (!isRunning) throw new InvalidDataException("Algorithm/s is not running");
+                                    if(_cts == null) throw new Exception("No cancellation token");
 
                                     _cts.Cancel();
                                     try
                                     {
                                         if (_algorithmTask != null)
+                                        {
                                             await _algorithmTask;
-
-                                        //TUTAJ BĘDZIE RAPORTOWANIE
+                                        }              
                                     }
-                                    catch
+                                    catch(OperationCanceledException)
                                     {
-
+                                        await SendMessage(webSocket,_reportGenerator.ConvertReportToJSON());
                                     }
-                                    _cts.Dispose();
-                                    _cts = null;
-                                    _algorithmTask = null;
+                                    catch(Exception ex)
+                                    {
+                                        await SendError(webSocket, $"Error while stopping: {ex.Message}");
+                                    }
+                                    finally
+                                    {
+                                        _cts.Dispose();
+                                        _cts = null;
+                                        _algorithmTask = null;
 
-                                    isRunning = false;
-                                    Console.WriteLine("Algorithm has stopped");
-
+                                        isRunning = false;
+                                    }
                                     break;
                                 }
                             default:
@@ -137,4 +165,12 @@ public class WebSocketHandler
         if (request.ValueKind == JsonValueKind.Null) throw new InvalidDataException("Request is empty");
         algorithmrequest = JsonSerializer.Deserialize<AlgorithmRequest>(request);
     } 
+    private static async Task SendMessage(WebSocket webSocket, string message)
+    {
+        var bytes = Encoding.UTF8.GetBytes(message);
+        if(webSocket.State == WebSocketState.Open)
+        {
+            await webSocket.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
+        }
+    }
 }
