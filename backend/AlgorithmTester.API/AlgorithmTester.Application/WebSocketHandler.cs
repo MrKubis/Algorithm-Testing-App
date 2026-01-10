@@ -82,20 +82,46 @@ public class WebSocketHandler
                                     if (isRunning) throw new InvalidDataException("Algorithm already is started");
                                     if (requestType == null) throw new InvalidDataException("No request found");
                                     _cts = new CancellationTokenSource();
+                                    
+                                    Console.WriteLine("[START] Setting up log callback and starting algorithm...");
+                                    
+                                    // Set up log callback to send logs to client
+                                    AlgorithmHandler.SetLogCallback(async (message) =>
+                                    {
+                                        try
+                                        {
+                                            Console.WriteLine($"[LOG] {message}");
+                                            var logMessage = JsonSerializer.Serialize(new
+                                            {
+                                                type = "log",
+                                                message = message
+                                            });
+                                            await SendMessage(webSocket, logMessage);
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            Console.WriteLine($"[LOG ERROR] Failed to send log: {ex.Message}");
+                                        }
+                                    });
+                                    
                                     _algorithmTask = Task.Run(async () =>
                                     {
                                         try
                                         {
+                                            Console.WriteLine("[ALGORITHM] Running algorithm...");
                                             await AlgorithmHandler.RunAlgorithmAsync(currentState,requestType,_reportGenerator, _cts.Token);
+                                            Console.WriteLine("[ALGORITHM] Completed, sending done message");
                                             await SendMessage(webSocket, "done");
                                         }
                                         catch(Exception ex)
                                         {
+                                            Console.WriteLine($"[ALGORITHM ERROR] {ex.Message}");
                                             await SendError(webSocket, ex.Message);
                                         }
                                         finally
                                         {
                                             isRunning = false;
+                                            Console.WriteLine("[ALGORITHM] Sending final report");
                                             await SendMessage(webSocket, _reportGenerator.ConvertReportToJSON());
                                         }
                                     });
@@ -143,7 +169,7 @@ public class WebSocketHandler
                 }
                 catch(Exception ex)
                 {
-                    SendError(webSocket, ex.Message);
+                    await SendError(webSocket, ex.Message);
                 }
                 
             }

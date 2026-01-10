@@ -15,6 +15,30 @@ namespace AlgorithmTester.Infrastructure.Algorithms
 {
     public class AlgorithmHandler
     {
+        public delegate Task LogMessageDelegate(string message);
+        private static LogMessageDelegate? _logCallback;
+
+        public static void SetLogCallback(LogMessageDelegate callback)
+        {
+            _logCallback = callback;
+        }
+
+        private static async Task SendLog(string message)
+        {
+            Console.WriteLine($"[SendLog] Called with message: {message}");
+            if (_logCallback != null)
+            {
+                Console.WriteLine($"[SendLog] Callback exists, calling it...");
+                await _logCallback(message);
+                // Small delay to ensure message is sent before next log
+                await Task.Delay(10);
+            }
+            else
+            {
+                Console.WriteLine($"[SendLog] No callback set!");
+            }
+        }
+
         public static async Task RunAlgorithmAsync(
             IRequest req,
             string requestType,
@@ -28,28 +52,37 @@ namespace AlgorithmTester.Infrastructure.Algorithms
                     case "Algorithm":
                     {
                         var request = (AlgorithmRequest)req;
-                        Console.WriteLine("Created request");
-                        Console.WriteLine(request.AlgorithmName);
-                        Console.WriteLine(request.ParamValues);
+                        await SendLog("Created request");
+                        await SendLog($"Algorithm: {request.AlgorithmName}");
+                        await SendLog($"Steps: {request.Steps}");
                         reportGenerator.CreateNewAlgorithmReport(request);
-                        Console.WriteLine("Created New Algorithm Report");
+                        await SendLog("Created New Algorithm Report");
                         
-                        Console.Write(request.FunctionList.Length);
                         for (int i = 0; i < request.FunctionList.Length; i++)
                         {
                             cancellationToken.ThrowIfCancellationRequested();
+                            await SendLog($"Starting function {i + 1}/{request.FunctionList.Length}: {request.FunctionList[i].FunctionName}");
+                            
                             Func<double[], double> function = FunctionFactory.Create(request.FunctionList[i].FunctionName);
                             IOptimizationAlgorithm algorithm = AlgorithmFactory.Create(
                                 request.AlgorithmName, request.ParamValues, request.Step, request.Steps, request.FunctionList[i].minValue, request.FunctionList[i].maxValue , function);
                             Argument[] x = HandleArguments(request.Arguments, algorithm);
 
                             reportGenerator.CreateEvaluation(request.FunctionList[i].FunctionName, request.FunctionList[i].minValue, request.FunctionList[i].maxValue);
+                            
                             for (int j = request.Step; j < request.Steps; j++)
                             {
                                 cancellationToken.ThrowIfCancellationRequested();
                                 algorithm.Solve(function, x);
                                 reportGenerator.Evaluate(i, algorithm.XFinal, algorithm.XBest, algorithm.FBest);
+                                
+                                // Send progress log every 10 generations or at the end
+                                if ((j + 1) % 10 == 0 || j == request.Steps - 1)
+                                {
+                                    await SendLog($"  Generation {j + 1}/{request.Steps}: Best value = {algorithm.FBest:E4}");
+                                }
                             }
+                            await SendLog($"Completed function {request.FunctionList[i].FunctionName}");
                         }
                         break;
                     }

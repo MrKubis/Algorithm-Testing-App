@@ -1,0 +1,71 @@
+import React, { useState, useEffect } from "react";
+import { AlgorithmParam } from "../services/AlgorithmService";
+
+interface ParameterInputProps {
+  params: AlgorithmParam[];
+  onParamChange: (params: Record<string, number>) => void;
+  disabled?: boolean;
+}
+
+export const ParameterInput: React.FC<ParameterInputProps> = ({
+  params,
+  onParamChange,
+  disabled = false,
+}) => {
+  const [paramValues, setParamValues] = useState<Record<string, number>>({});
+
+  // Initialize parameter values
+  useEffect(() => {
+    const initialValues: Record<string, number> = {};
+    params.forEach((param) => {
+      initialValues[param.name] = param.defaultValue || (param.lowerBoundary ?? 1);
+    });
+    setParamValues(initialValues);
+    onParamChange(initialValues);
+  }, [params, onParamChange]);
+
+  const handleParamChange = (paramName: string, value: string) => {
+    const numValue = parseFloat(value);
+    const newValues = { ...paramValues, [paramName]: numValue };
+    setParamValues(newValues);
+    onParamChange(newValues);
+  };
+
+  return (
+    <div className="card">
+      <h2>Algorithm Parameters</h2>
+      {params.length === 0 ? (
+        <p>No parameters available for this algorithm.</p>
+      ) : (
+        <div className="parameters-grid">
+          {params.map((param) => (
+            <div key={param.name} className="parameter-group">
+              <label htmlFor={`param-${param.name}`}>
+                {param.name}
+                <span className="param-description">{param.description}</span>
+              </label>
+              <div className="parameter-input-wrapper">
+                <input
+                  id={`param-${param.name}`}
+                  type="number"
+                  min={param.lowerBoundary ?? undefined}
+                  max={param.upperBoundary ?? undefined}
+                  step="0.1"
+                  value={paramValues[param.name] || ""}
+                  onChange={(e) => handleParamChange(param.name, e.target.value)}
+                  disabled={disabled}
+                  className="parameter-input"
+                />
+                <div className="parameter-bounds">
+                  Min: {param.lowerBoundary ?? "unlimited"} | Max: {param.upperBoundary ?? "unlimited"}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ParameterInput;
