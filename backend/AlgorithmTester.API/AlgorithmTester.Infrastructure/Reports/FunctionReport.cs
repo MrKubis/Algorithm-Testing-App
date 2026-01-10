@@ -6,6 +6,6 @@ namespace AlgorithmTester.Infrastructure.Reports
     {
         public FunctionInfo FunctionInfo { get; set; }
         public int StepsCount { get; set; }
-        public List<AlgorithmEvaluation> Evaluations {get; set;}
+        public List<AlgorithmEvaluation> Evaluations { get; set; }
     }
 }

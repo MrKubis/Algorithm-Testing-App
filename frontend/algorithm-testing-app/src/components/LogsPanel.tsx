@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { Log } from "./LogEntry";
 import { LogEntry } from "./LogEntry";
 
@@ -8,6 +8,17 @@ interface LogsPanelProps {
 }
 
 export const LogsPanel: React.FC<LogsPanelProps> = ({ logs, onClear }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      const { scrollHeight, clientHeight } = containerRef.current;
+      
+      containerRef.current.scrollTop = scrollHeight - clientHeight;
+      
+    }
+  }, [logs]);
+
   return (
     <div className="card logs">
       <div className="logs-header">
@@ -20,11 +31,14 @@ export const LogsPanel: React.FC<LogsPanelProps> = ({ logs, onClear }) => {
           Clear
         </button>
       </div>
-      <div className="logs-container">
+      
+      <div className="logs-container" ref={containerRef}>
         {logs.length === 0 ? (
           <p className="no-logs">No logs yet. Start a test to see logs here.</p>
         ) : (
-          logs.map((log, index) => <LogEntry key={index} log={log} />)
+          <>
+            {logs.map((log, index) => <LogEntry key={index} log={log} />)}
+          </>
         )}
       </div>
     </div>

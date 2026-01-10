@@ -11,6 +11,7 @@ public class WebSocketHandler
 {
     private static Task? _algorithmTask;
     private static CancellationTokenSource? _cts;
+    private static ManualResetEventSlim _pauseEvent = new ManualResetEventSlim(true);
     private static ReportGenerator _reportGenerator;
     public static async Task Echo(WebSocket webSocket)
     {
@@ -82,21 +83,63 @@ public class WebSocketHandler
                                     if (isRunning) throw new InvalidDataException("Algorithm already is started");
                                     if (requestType == null) throw new InvalidDataException("No request found");
                                     _cts = new CancellationTokenSource();
+                                    _pauseEvent.Set();
+                                    
+                                    Console.WriteLine("[START] Setting up log callback and starting algorithm...");
+                                    
+                                    // Set up log callback to send logs to client
+                                    AlgorithmHandler.SetLogCallback(async (message) =>
+                                    {
+                                        try
+                                        {
+                                            Console.WriteLine($"[LOG] {message}");
+                                            var logMessage = JsonSerializer.Serialize(new
+                                            {
+                                                type = "log",
+                                                message = message
+                                            });
+                                            await SendMessage(webSocket, logMessage);
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            Console.WriteLine($"[LOG ERROR] Failed to send log: {ex.Message}");
+                                        }
+                                    });
+                                    
+                                    AlgorithmHandler.SetProgressCallback(async (progressValue) =>
+                                    {
+                                        try {
+                                            var progressMsg = JsonSerializer.Serialize(new { progress = progressValue });
+                                            await SendMessage(webSocket, progressMsg);
+                                        }
+                                        catch
+                                        {
+                                            
+                                        }
+                                    });
+
                                     _algorithmTask = Task.Run(async () =>
                                     {
                                         try
                                         {
-                                            await AlgorithmHandler.RunAlgorithmAsync(currentState,requestType,_reportGenerator, _cts.Token);
-                                            await SendMessage(webSocket, "done");
+                                            Console.WriteLine("[ALGORITHM] Running algorithm...");
+                                            await AlgorithmHandler.RunAlgorithmAsync(currentState,requestType,_reportGenerator, _pauseEvent, _cts.Token);
+                                            Console.WriteLine("[ALGORITHM] Completed, sending done message");
                                         }
                                         catch(Exception ex)
                                         {
+                                            Console.WriteLine($"[ALGORITHM ERROR] {ex.Message}");
                                             await SendError(webSocket, ex.Message);
                                         }
                                         finally
                                         {
-                                            isRunning = false;
                                             await SendMessage(webSocket, _reportGenerator.ConvertReportToJSON());
+                                            isRunning = false;
+                                            Console.WriteLine("[ALGORITHM] Sending final report");
+                                            await SendMessage(webSocket, "done");
+                                            _cts.Dispose();
+                                            _cts = null;
+                                            _algorithmTask = null;
                                         }
                                     });
                                     
@@ -109,6 +152,7 @@ public class WebSocketHandler
                                     if(_cts == null) throw new Exception("No cancellation token");
 
                                     _cts.Cancel();
+                                    _pauseEvent.Set();
                                     try
                                     {
                                         if (_algorithmTask != null)
@@ -134,6 +178,17 @@ public class WebSocketHandler
                                     }
                                     break;
                                 }
+                            case "pause":
+                                if (!isRunning) throw new InvalidDataException("Algorithm not running");
+                                _pauseEvent.Reset();
+                                await SendMessage(webSocket, JsonSerializer.Serialize(new { status = "Paused" }));
+                                break;
+
+                            case "resume":
+                                if (!isRunning) throw new InvalidDataException("Algorithm not running");
+                                _pauseEvent.Set();
+                                await SendMessage(webSocket, JsonSerializer.Serialize(new { status = "Resumed" }));
+                                break;
                             default:
                                 {
                                     throw new InvalidDataException("Wrong command");
@@ -143,7 +198,7 @@ public class WebSocketHandler
                 }
                 catch(Exception ex)
                 {
-                    SendError(webSocket, ex.Message);
+                    await SendError(webSocket, ex.Message);
                 }
                 
             }
