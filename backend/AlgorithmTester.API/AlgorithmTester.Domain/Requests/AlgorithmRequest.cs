@@ -10,7 +10,7 @@ public class AlgorithmRequest : IRequest
     public int Steps {get; set;}
     public Argument[]? Arguments {get; set;}
     //Do zmiany na FunctionInfos
-    public string[] FunctionList {get; set;}
+    public FunctionInfo[] FunctionList {get; set;}
 
     public bool isValidated()
     {
@@ -26,7 +26,7 @@ public class AlgorithmRequest : IRequest
             Step = 0;
         }
 
-        //TODO sprawdzanie czy X mieœci siê w przedzia³ach
+        //TODO sprawdzanie czy X mieï¿½ci siï¿½ w przedziaï¿½ach
 
         return true;
     }

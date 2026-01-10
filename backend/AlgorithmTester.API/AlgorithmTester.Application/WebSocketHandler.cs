@@ -2,7 +2,6 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using AlgorithmTester.Domain.Requests;
-using AlgorithmTester.Domain.Validators;
 using AlgorithmTester.Infrastructure.Algorithms;
 using AlgorithmTester.Infrastructure.Reports;
 
@@ -54,26 +53,18 @@ public class WebSocketHandler
                         if (wsMessage.Request.ValueKind == JsonValueKind.Null) throw new InvalidDataException("Request is empty");
 
                         var request = JsonSerializer.Deserialize<Request>(wsMessage.Request);
-
-                        try
+                        switch (request.Type)
                         {
-                            switch (request.Type)
-                            {
-                                case "Algorithm":
-                                    currentState = JsonSerializer.Deserialize<AlgorithmRequest>(request.Body);
-                                    requestType = "Algorithm";
-                                    break;
-                                case "Function":
-                                    currentState = JsonSerializer.Deserialize<FunctionRequest>(request.Body);
-                                    requestType = "Algorithm";
-                                    break;
-                            }
-                            if (!currentState.isValidated()) { throw new Exception("Error validating request"); }
+                            case "Algorithm":
+                                currentState = JsonSerializer.Deserialize<AlgorithmRequest>(request.Body);
+                                requestType = "Algorithm";
+                                break;
+                            case "Function":
+                                currentState = JsonSerializer.Deserialize<FunctionRequest>(request.Body);
+                                requestType = "Function";
+                                break;
                         }
-                        catch (Exception e)
-                        {
-                            throw new Exception(e.Message);
-                        }
+                        if (!currentState.isValidated()) { throw new Exception("Error validating request"); }
                         algorithmStateLoaded = true;
                     }
 

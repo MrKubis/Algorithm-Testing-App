@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using AlgorithmTester.Domain.Requests;
 
 namespace AlgorithmTester.Infrastructure.Reports
 {
-    internal class FunctionReport
+    public class FunctionReport
     {
+        public FunctionInfo FunctionInfo { get; set; }
+        public int StepsCount { get; set; }
+        public List<AlgorithmEvaluation> Evaluations {get; set;}
     }
 }

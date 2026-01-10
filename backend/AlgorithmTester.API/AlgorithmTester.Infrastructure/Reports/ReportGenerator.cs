@@ -13,13 +13,33 @@ namespace AlgorithmTester.Infrastructure.Reports
             _functionReport = null;
             _algorithmReport = new AlgorithmReport
             {
-
-                Functions = algorithmRequest.FunctionList,
-                Parameters = algorithmRequest.ParamValues,
-                Evaluations = new List<Evaluation>()
+                AlgorithmInfo = new AlgorithmInfo
+                {
+                    AlgorithmName = algorithmRequest.AlgorithmName,
+                    ParamValues = algorithmRequest.ParamValues
+                },
+                StepsCount = algorithmRequest.Steps,
+                Evaluations = new List<FunctionEvaluation>()
             };
         }
-        public void CreateEvaluation(string Function)
+
+        public void CreateNewFunctionReport(FunctionRequest functionRequest)
+        {
+            _algorithmReport = null;
+            _functionReport = new FunctionReport
+            {
+                FunctionInfo = new FunctionInfo
+                {
+                    FunctionName = functionRequest.FunctionName,
+                    minValue = functionRequest.minValue,
+                    maxValue = functionRequest.maxValue,
+                },
+                StepsCount = functionRequest.Steps,
+                Evaluations = new List<AlgorithmEvaluation>()
+            };
+
+        }
+        public void CreateEvaluation(string name,double minValue, double maxValue)
         {
             if (_algorithmReport != null && _functionReport != null)
             {
@@ -27,15 +47,20 @@ namespace AlgorithmTester.Infrastructure.Reports
             }
             if (_algorithmReport != null)
             {
-                _algorithmReport.Evaluations.Add(new Evaluation
+                _algorithmReport.Evaluations.Add(new FunctionEvaluation
                 {
-                    Function = Function,
+                    Function = name,
+                    minValue = minValue,
+                    maxValue = maxValue,
                     Step = 0
                 });
             }
             else if (_functionReport != null)
             {
-
+                _functionReport.Evaluations.Add(new AlgorithmEvaluation
+                {
+                    AlgortihmName = name
+                });
             }
             else
             {
@@ -59,7 +84,10 @@ namespace AlgorithmTester.Infrastructure.Reports
             }
             else if (_functionReport != null)
             {
-
+                _functionReport.Evaluations[i].XBest = XBest;
+                _functionReport.Evaluations[i].FBest = FBest;
+                _functionReport.Evaluations[i].XFinal = XFinal;
+                _functionReport.Evaluations[i].Step += 1;
             }
             else
             {

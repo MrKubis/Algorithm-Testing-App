@@ -6,24 +6,30 @@ namespace AlgorithmTester.Infrastructure.Algorithms;
 
 public class AlgorithmFactory
 {
-    public static IOptimizationAlgorithm Create(AlgorithmRequest request,  Func<double[], double> fitnessFunction)
+    public static IOptimizationAlgorithm Create(string algorithmName, 
+                                                Dictionary<string,double> paramValues,
+                                                int step,
+                                                int steps , 
+                                                double minValue,
+                                                double maxValue,
+                                                Func<double[], double> fitnessFunction)
     {
-        return request.AlgorithmName switch
+        return algorithmName switch
         {
             "Genetic" => new GeneticAlgorithm(
-                request.ParamValues["populationSize"],
-                request.Steps,
-                request.Step,
-                request.ParamValues["geneCount"],
-                request.ParamValues["minValue"],
-                request.ParamValues["maxValue"],
-                request.ParamValues["mutationProbability"],
-                request.ParamValues["crossoverProbability"],
+                paramValues["populationSize"],
+                steps,
+                step,
+                paramValues["geneCount"],
+                minValue,
+                maxValue,
+                paramValues["mutationProbability"],
+                paramValues["crossoverProbability"],
                 fitnessFunction
             ),
             
             //default
-            _ => throw new ArgumentOutOfRangeException(nameof(request.AlgorithmName), request.AlgorithmName, null)
+            _ => throw new ArgumentOutOfRangeException(nameof(algorithmName), algorithmName, null)
         };
     }
 }
