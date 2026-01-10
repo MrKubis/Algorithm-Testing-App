@@ -140,12 +140,13 @@ const AlgorithmTesting: React.FC = () => {
             }
             
             // Handle Final Report
-            if (message.AlgorithmReport || message.FunctionReport) {
+            if (message.AlgorithmInfo || message.FunctionInfo || message.AlgorithmReport) {
+               
                setTestResults({
                   algorithm: algorithmName || "Unknown",
                   status: "Completed",
-                  executionTime: "0",
-                  operationsCount: 0,
+                  executionTime: "0", 
+                  operationsCount: 0, 
                   memoryUsed: "0"
                 });
                 setProgress(100);
