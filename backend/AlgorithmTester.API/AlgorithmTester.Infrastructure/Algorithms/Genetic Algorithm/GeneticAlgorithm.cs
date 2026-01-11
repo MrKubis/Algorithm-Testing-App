@@ -7,65 +7,27 @@ namespace AlgorithmTester.Infrastructure.Algorithms.Genetic_Algorithm;
 
 public class GeneticAlgorithm : IOptimizationAlgorithm
 {
-    // --- Właściwości Interfejsu ---
     public string Name { get; set; } = "Genetic Algorithm";
     public List<Argument> XFinal { get; set; }
     public Argument XBest { get; set; }
     public double FBest { get; set; } = double.MaxValue;
     public int NumberOfEvaluationFitnessFunction { get; set; }
 
-
     public List<ParamInfo> ParamsInfo { get; set; } = new List<ParamInfo>{
-        new ParamInfo{
-            Name = "populationSize",
-            Description = "Number of individuals in a generation",
-            UpperBoundary = double.PositiveInfinity,
-            LowerBoundary=1
-        },
-        new ParamInfo{
-            Name = "generations",
-            Description = "Number of generations",
-            UpperBoundary = double.PositiveInfinity,
-            LowerBoundary=1
-        },
-        new ParamInfo{
-            Name = "geneCount",
-            Description = "How many genes does one individual have",
-            UpperBoundary = double.PositiveInfinity,
-            LowerBoundary=1
-        },
-        new ParamInfo{
-            Name = "minValue",
-            Description = "Minimal value of X",
-            UpperBoundary = double.PositiveInfinity,
-            LowerBoundary=double.NegativeInfinity
-        },
-        new ParamInfo{
-            Name = "maxValue",
-            Description = "Maximal value of X",
-            UpperBoundary = double.PositiveInfinity,
-            LowerBoundary=double.NegativeInfinity
-        },
-        new ParamInfo{
-            Name = "mutationProbability",
-            Description = "Probability of mutating an individual during crossover",
-            UpperBoundary = 1,
-            LowerBoundary=0
-        },
-        new ParamInfo{
-            Name = "crossoverProbability",
-            Description = "Probability of crossing two individuals",
-            UpperBoundary = 1,
-            LowerBoundary=0
-        }
+        new ParamInfo{ Name = "populationSize", Description = "Number of individuals", UpperBoundary = 10000, LowerBoundary=1 },
+        new ParamInfo{ Name = "generations", Description = "Number of generations", UpperBoundary = 100000, LowerBoundary=1 },
+        new ParamInfo{ Name = "geneCount", Description = "Dimensions (N)", UpperBoundary = 1000, LowerBoundary=1 },
+        new ParamInfo{ Name = "minValue", Description = "Min X", UpperBoundary = double.PositiveInfinity, LowerBoundary=double.NegativeInfinity },
+        new ParamInfo{ Name = "maxValue", Description = "Max X", UpperBoundary = double.PositiveInfinity, LowerBoundary=double.NegativeInfinity },
+        new ParamInfo{ Name = "mutationProbability", Description = "Prob. of mutation", UpperBoundary = 1, LowerBoundary=0 },
+        new ParamInfo{ Name = "crossoverProbability", Description = "Prob. of crossover", UpperBoundary = 1, LowerBoundary=0 }
     };
-    // --- DO ZROBIENIA ---
+
     public IStateWriter writer { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
     public IStateReader reader { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
     public IGenerateTextReport stringReportGenerator { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
     public IGeneratePDFReport pdfReportGenerator { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
-    // --- Parametry Konfiguracyjne ---
     private readonly int _populationSize;
     private readonly int _generations;
     private readonly int _geneCount;
@@ -92,7 +54,7 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
     {
         _populationSize = (int)populationSize;
         _generations = (int)generations;
-        _startGeneration =(int) startGeneration;
+        _startGeneration = (int)startGeneration;
         _geneCount = (int)geneCount;
         _minValue = minValue;
         _maxValue = maxValue;
@@ -101,28 +63,99 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
         _fitnessFunction = fitnessFunction;
         _random = new Random();
     }
+
     public void Solve(Func<double[], double> function, Argument[] X)
     {
-        List<Individual> population = null;
-        int startGeneration = _startGeneration;
-        //Inicjalizacja populacji
-        population = InitializePopulation(X);
-        EvaluatePopulation(population);
+        List<Individual> population = InitializePopulation(X);
+        EvaluatePopulation(population, function);
         UpdateGlobalBest(population);
 
+        for (int i = 0; i < _generations; i++)
+        {
+            double progress = (double)i / _generations;
+            population = PerformEvolutionStep(population, progress);
+
+            EvaluatePopulation(population, function);
+            UpdateGlobalBest(population);
+        }
+
+        FinalizeResult(population, X);
+    }
+
+    public double Solve()
+    {
+        List<Individual> population = null;
+        int startGeneration = 0;
+        bool stateLoaded = false;
+
+        if (File.Exists(StateFileName))
+        {
+            try
+            {
+                var state = LoadState();
+                if (ValidateParameters(state))
+                {
+                    Console.WriteLine($"[INFO] Resuming from generation {state.CurrentGeneration}.");
+                    startGeneration = state.CurrentGeneration;
+                    NumberOfEvaluationFitnessFunction = state.EvaluationsCount;
+                    FBest = state.FBest;
+                    population = state.Population.Select(p => new Individual(_geneCount) { Genes = p.Genes, Fitness = p.Fitness }).ToList();
+                    stateLoaded = true;
+                }
+                else
+                {
+                    File.Delete(StateFileName);
+                }
+            }
+            catch {}
+        }
+
+        if (!stateLoaded)
+        {
+            NumberOfEvaluationFitnessFunction = 0;
+            FBest = double.MaxValue;
+            population = InitializePopulation();
+            EvaluatePopulation(population, _fitnessFunction);
+            UpdateGlobalBest(population);
+        }
+
+        if (startGeneration >= _generations) return FBest;
+
+        for (int i = startGeneration; i < _generations; i++)
+        {
+            double progress = (double)i / _generations;
+
+            population = PerformEvolutionStep(population, progress);
+
+            EvaluatePopulation(population, _fitnessFunction);
+            UpdateGlobalBest(population);
+
+            SaveCurrentState(i + 1, population);
+
+            if ((i + 1) % 10 == 0 || i == _generations - 1)
+                Console.WriteLine($"[GEN {i + 1}] Best Fitness: {FBest:F5}");
+        }
+
+        File.Delete(StateFileName);
+        return FBest;
+    }
+
+    private List<Individual> PerformEvolutionStep(List<Individual> currentPopulation, double progress)
+    {
         List<Individual> newPopulation = new List<Individual>();
-        newPopulation.Add(population.OrderBy(x => x.Fitness).First().Clone());
-        double progress = (double)_startGeneration / _generations;
+
+        var bestInd = currentPopulation.OrderBy(x => x.Fitness).First();
+        newPopulation.Add(bestInd.Clone());
 
         while (newPopulation.Count < _populationSize)
         {
-            Individual parent1 = TournamentSelection(population, 3);
-            Individual parent2 = TournamentSelection(population, 3);
+            Individual parent1 = TournamentSelection(currentPopulation, 3);
+            Individual parent2 = TournamentSelection(currentPopulation, 3);
             Individual child1, child2;
 
             if (_random.NextDouble() < _crossoverProbability)
             {
-                var children = ArithmeticCrossover(parent1, parent2);
+                var children = BlxAlphaCrossover(parent1, parent2);
                 child1 = children.Item1;
                 child2 = children.Item2;
             }
@@ -139,243 +172,36 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
             if (newPopulation.Count < _populationSize) newPopulation.Add(child2);
         }
 
-        population = newPopulation;
-
-        EvaluatePopulation(population);
-        UpdateGlobalBest(population);
-
-        XFinal = new List<Argument>();
-        foreach (Individual child in population)
-        {
-            XFinal.Add(new Argument { Values = child.Genes });
-        }
-
-        //Ajust population to X
-        int count = Math.Min(population.Count, X.Length);
-        for (int i = 0; i < count; i++)
-        {
-            int geneLength = Math.Min(population[i].Genes.Length, X[i].Values.Length);
-            for (int j = 0; j < geneLength; j++)
-            {
-                X[i].Values[j] = population[i].Genes[j];
-            }
-        }
-        _startGeneration++;
+        return newPopulation;
     }
 
-
-    public double Solve()
-    {
-        List<Individual> population = null;
-        int startGeneration = 0;
-        bool stateLoaded = false;
-
-        if (File.Exists(StateFileName))
-        {
-            try
-            {
-                var state = LoadState();
-                if (ValidateParameters(state))
-                {
-                    Console.WriteLine($"[INFO] Plik stanu zgodny z konfiguracją. Wznawianie od generacji {state.CurrentGeneration}.");
-
-                    startGeneration = state.CurrentGeneration;
-                    NumberOfEvaluationFitnessFunction = state.EvaluationsCount;
-                    //XBest = state.XBest;
-                    FBest = state.FBest;
-
-                    population = state.Population.Select(p => new Individual(_geneCount)
-                    {
-                        Genes = p.Genes,
-                        Fitness = p.Fitness
-                    }).ToList();
-
-                    stateLoaded = true;
-                }
-                else
-                {
-                    Console.WriteLine("[WARN] Plik stanu istnieje, ale parametry (np. mutacja, populacja) są inne niż w obecnej konfiguracji. Stan zignorowany.");
-                    File.Delete(StateFileName);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[BLAD] Błąd odczytu stanu: {ex.Message}. Rozpoczynam od nowa.");
-            }
-        }
-
-        if (!stateLoaded)
-        {
-            Console.WriteLine("[INFO] Start nowych obliczeń.");
-            NumberOfEvaluationFitnessFunction = 0;
-            FBest = double.MaxValue;
-            population = InitializePopulation();
-            EvaluatePopulation(population);
-            UpdateGlobalBest(population);
-        }
-
-        if (startGeneration >= _generations)
-        {
-            Console.WriteLine("[INFO] Algorytm zakończony we wcześniejszym przebiegu.");
-            return FBest;
-        }
-
-        for (int i = startGeneration; i < _generations; i++)
-        {
-            List<Individual> newPopulation = new List<Individual>();
-            newPopulation.Add(population.OrderBy(x => x.Fitness).First().Clone());
-            double progress = (double)i / _generations;
-
-            while (newPopulation.Count < _populationSize)
-            {
-                Individual parent1 = TournamentSelection(population, 3);
-                Individual parent2 = TournamentSelection(population, 3);
-                Individual child1, child2;
-
-                if (_random.NextDouble() < _crossoverProbability)
-                {
-                    var children = ArithmeticCrossover(parent1, parent2);
-                    child1 = children.Item1;
-                    child2 = children.Item2;
-                }
-                else
-                {
-                    child1 = parent1.Clone();
-                    child2 = parent2.Clone();
-                }
-
-                GaussianMutation(child1, progress);
-                GaussianMutation(child2, progress);
-
-                newPopulation.Add(child1);
-                if (newPopulation.Count < _populationSize) newPopulation.Add(child2);
-            }
-
-            population = newPopulation;
-            EvaluatePopulation(population);
-            UpdateGlobalBest(population);
-
-            SaveCurrentState(i + 1, population);
-
-            if ((i + 1) % 10 == 0 || i == _generations - 1)
-                Console.WriteLine($"[GEN {i + 1}] Najlepsza wartość FBest: {FBest}, Liczba ewaluacji: {NumberOfEvaluationFitnessFunction}");
-        }
-        File.Delete(StateFileName);
-        return FBest;
-    }
-
-    private bool ValidateParameters(AlgorithmState state)
-    {
-        if (state.Parameters == null) return false;
-        var currentParams = GetCurrentParameters();
-
-        foreach (var kvp in currentParams)
-        {
-            if (!state.Parameters.ContainsKey(kvp.Key))
-            {
-                Console.WriteLine($"[WALIDACJA] Brak parametru w pliku: {kvp.Key}");
-                return false;
-            }
-
-            double savedValue = state.Parameters[kvp.Key];
-            if (Math.Abs(savedValue - kvp.Value) > 0.000001)
-            {
-                Console.WriteLine($"[WALIDACJA] Niezgodność parametru '{kvp.Key}'. Zapisany: {savedValue}, Obecny: {kvp.Value}");
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private Dictionary<string, double> GetCurrentParameters()
-    {
-        return new Dictionary<string, double>
-        {
-            { "PopulationSize", _populationSize },
-            { "Generations", _generations },
-            { "GeneCount", _geneCount },
-            { "MinValue", _minValue },
-            { "MaxValue", _maxValue },
-            { "MutationProbability", _mutationProbability },
-            { "CrossoverProbability", _crossoverProbability }
-        };
-    }
-
-    private void SaveCurrentState(int nextGenerationIndex, List<Individual> population)
-    {
-        var state = new AlgorithmState
-        {
-            Parameters = GetCurrentParameters(),
-
-            CurrentGeneration = nextGenerationIndex,
-            EvaluationsCount = NumberOfEvaluationFitnessFunction,
-            //XBest = this.XBest,
-            FBest = this.FBest,
-            Population = population.Select(ind => new IndividualState
-            {
-                Genes = ind.Genes,
-                Fitness = ind.Fitness
-            }).ToList()
-        };
-
-        var options = new JsonSerializerOptions { WriteIndented = true };
-        string jsonString = JsonSerializer.Serialize(state, options);
-        File.WriteAllText(StateFileName, jsonString);
-    }
-
-    private AlgorithmState LoadState()
-    {
-        string jsonString = File.ReadAllText(StateFileName);
-        return JsonSerializer.Deserialize<AlgorithmState>(jsonString);
-    }
-    private List<Individual> InitializePopulation()
-    {
-        var pop = new List<Individual>(_populationSize);
-        for (int i = 0; i < _populationSize; i++)
-        {
-            var ind = new Individual(_geneCount);
-            for (int j = 0; j < _geneCount; j++) ind.Genes[j] = _minValue + (_random.NextDouble() * (_maxValue - _minValue));
-            pop.Add(ind);
-        }
-        return pop;
-    }
-    private void EvaluatePopulation(List<Individual> population)
-    {
-        foreach (var ind in population)
-        {
-            ind.Fitness = _fitnessFunction(ind.Genes);
-            NumberOfEvaluationFitnessFunction++;
-        }
-    }
-    private void UpdateGlobalBest(List<Individual> population)
-    {
-        var currentBest = population.OrderBy(x => x.Fitness).First();
-        if (XBest == null || currentBest.Fitness < FBest) { FBest = currentBest.Fitness; XBest = new Argument { Values = currentBest.Genes }; }
-    }
-    private Individual TournamentSelection(List<Individual> population, int tournamentSize)
-    {
-        Individual best = null;
-        for (int i = 0; i < tournamentSize; i++) { Individual ind = population[_random.Next(population.Count)]; 
-            if (best == null || ind.Fitness < best.Fitness) best = ind; }
-        return best;
-    }
-    private (Individual, Individual) ArithmeticCrossover(Individual p1, Individual p2)
+    private (Individual, Individual) BlxAlphaCrossover(Individual p1, Individual p2)
     {
         var c1 = new Individual(_geneCount);
         var c2 = new Individual(_geneCount);
-        double alpha = _random.NextDouble();
+        double alpha = 0.5;
 
         for (int i = 0; i < _geneCount; i++)
         {
-            c1.Genes[i] = alpha * p1.Genes[i] + (1 - alpha) * p2.Genes[i];
-            c2.Genes[i] = (1 - alpha) * p1.Genes[i] + alpha * p2.Genes[i];
+            double min = Math.Min(p1.Genes[i], p2.Genes[i]);
+            double max = Math.Max(p1.Genes[i], p2.Genes[i]);
+            double distance = max - min;
+
+            double lower = min - (alpha * distance);
+            double upper = max + (alpha * distance);
+
+            c1.Genes[i] = lower + _random.NextDouble() * (upper - lower);
+            c2.Genes[i] = lower + _random.NextDouble() * (upper - lower);
+
+            c1.Genes[i] = Math.Clamp(c1.Genes[i], _minValue, _maxValue);
+            c2.Genes[i] = Math.Clamp(c2.Genes[i], _minValue, _maxValue);
         }
         return (c1, c2);
     }
+
     private void GaussianMutation(Individual ind, double progress)
     {
         double startSigma = (_maxValue - _minValue) * 0.1;
-
         double endSigma = (_maxValue - _minValue) * 0.0001;
 
         double currentSigma = startSigma * Math.Pow(endSigma / startSigma, progress);
@@ -389,38 +215,110 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
                 double randStdNormal = Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2);
 
                 ind.Genes[i] += randStdNormal * currentSigma;
-
-                if (ind.Genes[i] < _minValue) ind.Genes[i] = _minValue;
-                if (ind.Genes[i] > _maxValue) ind.Genes[i] = _maxValue;
+                ind.Genes[i] = Math.Clamp(ind.Genes[i], _minValue, _maxValue);
             }
         }
     }
+
+    private Individual TournamentSelection(List<Individual> population, int tournamentSize)
+    {
+        Individual best = null;
+        for (int i = 0; i < tournamentSize; i++)
+        {
+            Individual ind = population[_random.Next(population.Count)];
+            if (best == null || ind.Fitness < best.Fitness) best = ind;
+        }
+        return best;
+    }
+
+
+    private void FinalizeResult(List<Individual> population, Argument[] X)
+    {
+        XFinal = new List<Argument>();
+        foreach (Individual child in population)
+        {
+            XFinal.Add(new Argument { Values = (double[])child.Genes.Clone() });
+        }
+
+        int count = Math.Min(population.Count, X.Length);
+        var sortedPop = population.OrderBy(x => x.Fitness).ToList();
+
+        for (int i = 0; i < count; i++)
+        {
+            if (X[i].Values.Length == _geneCount)
+            {
+                Array.Copy(sortedPop[i].Genes, X[i].Values, _geneCount);
+            }
+        }
+    }
+
+    private void EvaluatePopulation(List<Individual> population, Func<double[], double> fitnessFunc)
+    {
+        foreach (var ind in population)
+        {
+            ind.Fitness = fitnessFunc(ind.Genes);
+            NumberOfEvaluationFitnessFunction++;
+        }
+    }
+
+    private void UpdateGlobalBest(List<Individual> population)
+    {
+        var currentBest = population.OrderBy(x => x.Fitness).First();
+        if (XBest == null || currentBest.Fitness < FBest)
+        {
+            FBest = currentBest.Fitness;
+            XBest = new Argument { Values = (double[])currentBest.Genes.Clone() };
+        }
+    }
+
+    private List<Individual> InitializePopulation()
+    {
+        var pop = new List<Individual>(_populationSize);
+        for (int i = 0; i < _populationSize; i++)
+        {
+            var ind = new Individual(_geneCount);
+            for (int j = 0; j < _geneCount; j++) ind.Genes[j] = _minValue + (_random.NextDouble() * (_maxValue - _minValue));
+            pop.Add(ind);
+        }
+        return pop;
+    }
+
     private List<Individual> InitializePopulation(Argument[] Arguments)
     {
         var population = new List<Individual>();
-        for(int i = 0;i < Arguments.Length; i++)
+        foreach (var arg in Arguments)
         {
-            Individual individual = new Individual(Arguments[i].Values.Length);
-            for(int j = 0; j < Arguments[i].Values.Length; j++)
+            if (arg.Values != null && arg.Values.Length == _geneCount && arg.Values.Any(v => v != 0))
             {
-                individual.Genes[j] = Arguments[i].Values[j];
+                var ind = new Individual(_geneCount);
+                Array.Copy(arg.Values, ind.Genes, _geneCount);
+                population.Add(ind);
             }
-            population.Add(individual);
+            else
+            {
+                var ind = new Individual(_geneCount);
+                for (int j = 0; j < _geneCount; j++) ind.Genes[j] = _minValue + (_random.NextDouble() * (_maxValue - _minValue));
+                population.Add(ind);
+            }
         }
+
+        while (population.Count < _populationSize)
+        {
+            var ind = new Individual(_geneCount);
+            for (int j = 0; j < _geneCount; j++) ind.Genes[j] = _minValue + (_random.NextDouble() * (_maxValue - _minValue));
+            population.Add(ind);
+        }
+
         return population;
     }
 
     public Argument[] GenerateArguments()
     {
         Argument[] arguments = new Argument[_populationSize];
-        for(int i = 0; i < _populationSize; i++)
+        for (int i = 0; i < _populationSize; i++)
         {
-            arguments[i] = new Argument
-            {
-                Values = new double[_geneCount]
-            };
-
-            for(int j=0; j<_geneCount; j++)
+            arguments[i] = new Argument { Values = new double[_geneCount] };
+            for (int j = 0; j < _geneCount; j++)
             {
                 arguments[i].Values[j] = _minValue + (_random.NextDouble() * (_maxValue - _minValue));
             }
@@ -428,4 +326,43 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
         return arguments;
     }
 
+    private bool ValidateParameters(AlgorithmState state)
+    {
+        if (state.Parameters == null) return false;
+        var currentParams = GetCurrentParameters();
+        foreach (var kvp in currentParams)
+        {
+            if (!state.Parameters.ContainsKey(kvp.Key)) return false;
+            if (Math.Abs(state.Parameters[kvp.Key] - kvp.Value) > 0.000001) return false;
+        }
+        return true;
+    }
+
+    private Dictionary<string, double> GetCurrentParameters()
+    {
+        return new Dictionary<string, double>
+        {
+            { "PopulationSize", _populationSize }, { "Generations", _generations },
+            { "GeneCount", _geneCount }, { "MinValue", _minValue }, { "MaxValue", _maxValue },
+            { "MutationProbability", _mutationProbability }, { "CrossoverProbability", _crossoverProbability }
+        };
+    }
+
+    private void SaveCurrentState(int nextGenerationIndex, List<Individual> population)
+    {
+        var state = new AlgorithmState
+        {
+            Parameters = GetCurrentParameters(),
+            CurrentGeneration = nextGenerationIndex,
+            EvaluationsCount = NumberOfEvaluationFitnessFunction,
+            FBest = this.FBest,
+            Population = population.Select(ind => new IndividualState { Genes = ind.Genes, Fitness = ind.Fitness }).ToList()
+        };
+        File.WriteAllText(StateFileName, JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    private AlgorithmState LoadState()
+    {
+        return JsonSerializer.Deserialize<AlgorithmState>(File.ReadAllText(StateFileName));
+    }
 }
