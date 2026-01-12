@@ -4,6 +4,7 @@ using AlgorithmTester.API.DTOs;
 using AlgorithmTester.Infrastructure.Algorithms;
 using AlgorithmTester.Infrastructure.Algorithms.Genetic_Algorithm;
 using AlgorithmTester.Domain.Interfaces;
+using AlgorithmTester.Infrastructure.Algorithms.Particle_Swarm_Optimization;
 
 namespace AlgorithmTester.API.Controllers;
 
@@ -16,7 +17,8 @@ public class AlgorithmsController : ControllerBase
     {
         var algorithms = new List<Algorithm>
         {
-            new Algorithm { Id = "Genetic", Name = "Genetic Algorithm", Description = "Evolutionary algorithm for optimization" }
+            new Algorithm { Id = "Genetic", Name = "Genetic Algorithm", Description = "Evolutionary algorithm for optimization" },
+            new Algorithm { Id = "Particle Swarm Optimization", Name = "Particle Swarm Optimization", Description = "Bio-inspired algorithm that finds optimal solutions by simulating the social behavior" }
         };
 
         return Ok(algorithms);
@@ -42,6 +44,17 @@ public class AlgorithmsController : ControllerBase
                     crossoverProbability: 0.8,
                     fitnessFunction: x => Math.Pow(x[0], 2) + Math.Pow(x[1], 2)
                 ),
+                "Particle Swarm Optimization" => new ParticleSwarmOptimization(
+                    swarmSize: 50,
+                    iterations: 100,
+                    dimensions: 2,
+                    minValue: -5.0,
+                    maxValue: 5.0,
+                    w: 0.5,
+                    c1: 1.5,
+                    c2: 1.5,
+                    fitnessFunction: x => Math.Pow(x[0], 2) + Math.Pow(x[1], 2)
+                ),
                 _ => throw new ArgumentException($"Unknown algorithm: {algorithmName}")
             };
 
@@ -52,7 +65,8 @@ public class AlgorithmsController : ControllerBase
             {
                 Id = algorithmName,
                 Name = algorithm.Name,
-                Description = algorithmName == "Genetic" ? "Evolutionary algorithm for optimization" : "Unknown",
+                Description = algorithmName == "Genetic" ? "Evolutionary algorithm for optimization" 
+                : "Bio-inspired algorithm that finds optimal solutions by simulating the social behavior",
                 Params = algorithm.ParamsInfo?.Select(p => new AlgorithmParameterDto
                 {
                     Name = p.Name,
