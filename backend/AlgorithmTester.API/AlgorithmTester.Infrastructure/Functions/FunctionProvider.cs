@@ -34,14 +34,22 @@
         public static double BealeFunction(double[] X)
         {
             // Beale Function is only 2-dimensional
+            if (X.Length < 2)
+            {
+                throw new ArgumentException($"Beale function requires exactly 2 dimensions, but received {X.Length}");
+            }
             return (Math.Pow(1.5 - X[0] + X[0] * X[1], 2)
-                    + Math.Pow(2.25 - X[0] + X[0] * X[1] * X[1], 2)
-                    + Math.Pow(2.625 - X[0] + X[0] * X[1] * X[1] * X[1], 2));
+                    + Math.Pow(2.25 - X[0] + X[0] * Math.Pow(X[1], 2), 2)
+                    + Math.Pow(2.625 - X[0] + X[0] * Math.Pow(X[1], 3), 2));
         }
 
         public static double BukinFunction(double[] X)
         {
             // Bukin Function is only 2-dimensional
+            if (X.Length < 2)
+            {
+                throw new ArgumentException($"Bukin function requires exactly 2 dimensions, but received {X.Length}");
+            }
             return (100 * Math.Sqrt(Math.Abs(X[1] - 0.01 * Math.Pow(X[0], 2))) + 0.01 * Math.Abs(X[0] + 10));
         }
     }

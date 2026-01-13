@@ -1,47 +1,42 @@
 import React from "react";
-import { AlgorithmSelector, Algorithm } from "./AlgorithmSelector";
+import { Algorithm } from "./AlgorithmSelector";
 import { TestControls } from "./TestControls";
-import { TestResults, TestResult } from "./TestResults";
 
 interface ControlPanelProps {
   algorithms: Algorithm[];
   selectedAlgorithm: string;
   isRunning: boolean;
+  isPaused: boolean;
   progress: number;
-  testResults: TestResult | null;
-  onAlgorithmChange: (algorithmId: string) => void;
   onStart: () => void;
   onStop: () => void;
+  onPause: () => void;
+  onResume: () => void;
 }
 
 export const ControlPanel: React.FC<ControlPanelProps> = ({
   algorithms,
   selectedAlgorithm,
   isRunning,
+  isPaused,
   progress,
-  testResults,
-  onAlgorithmChange,
   onStart,
   onStop,
+  onPause,
+  onResume,
 }) => {
   return (
     <div className="control-panel">
-      <AlgorithmSelector
-        algorithms={algorithms}
-        selectedAlgorithm={selectedAlgorithm}
-        onAlgorithmChange={onAlgorithmChange}
-        disabled={isRunning}
-      />
-
       <TestControls
         isRunning={isRunning}
+        isPaused={isPaused}
         progress={progress}
         canStart={!!selectedAlgorithm}
         onStart={onStart}
         onStop={onStop}
+        onPause={onPause}
+        onResume={onResume}
       />
-
-      <TestResults results={testResults} />
     </div>
   );
 };
