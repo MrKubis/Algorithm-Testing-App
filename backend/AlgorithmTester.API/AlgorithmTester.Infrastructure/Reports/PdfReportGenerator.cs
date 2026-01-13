@@ -159,8 +159,7 @@ namespace AlgorithmTester.Infrastructure.Reports
                     genTable.AddCell(new PdfPCell(new Phrase(string.Format("{0:E4}", gen.FBest ?? evaluation.FBest), bodyFont)) { Padding = 5 });
 
                     string solutionStr = gen.XBest != null && gen.XBest.Values.Length > 0
-                        ? string.Join(", ", gen.XBest.Values.Take(3).Select(v => v.ToString("F3"))) +
-                          (gen.XBest.Values.Length > 3 ? "..." : "")
+                        ? string.Join(", ", gen.XBest.Values.Select(v => v.ToString("F3")))
                         : "N/A";
                     genTable.AddCell(new PdfPCell(new Phrase(solutionStr, bodyFont)) { Padding = 5 });
                 }
@@ -265,8 +264,7 @@ namespace AlgorithmTester.Infrastructure.Reports
                         genTable.AddCell(new PdfPCell(new Phrase(string.Format("{0:E4}", gen.FBest ?? evaluation.FBest), bodyFont)) { Padding = 5 });
 
                         string solutionStr = gen.XBest != null && gen.XBest.Values.Length > 0
-                            ? string.Join(", ", gen.XBest.Values.Take(3).Select(v => v.ToString("F3"))) +
-                              (gen.XBest.Values.Length > 3 ? "..." : "")
+                            ? string.Join(", ", gen.XBest.Values.Select(v => v.ToString("F3")))
                             : "N/A";
                         genTable.AddCell(new PdfPCell(new Phrase(solutionStr, bodyFont)) { Padding = 5 });
                     }

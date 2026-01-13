@@ -43,6 +43,11 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
     private readonly Random _random;
     private const string StateFileName = "algorithm_state.json";
 
+    // Incremental state so each Solve() call advances one generation instead of a full run
+    private List<Individual>? _population;
+    private int _currentGeneration = 0;
+    private bool _initialized = false;
+
     public GeneticAlgorithm(
         double populationSize,
         double generations,
@@ -72,20 +77,28 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
 
     public void Solve(Func<double[], double> function, Argument[] X)
     {
-        List<Individual> population = InitializePopulation(X);
-        EvaluatePopulation(population, function);
-        UpdateGlobalBest(population);
-
-        for (int i = 0; i < _generations; i++)
+        // First call: build initial population and evaluate
+        if (!_initialized)
         {
-            double progress = (double)i / _generations;
-            population = PerformEvolutionStep(population, progress);
-
-            EvaluatePopulation(population, function);
-            UpdateGlobalBest(population);
+            _population = InitializePopulation(X);
+            EvaluatePopulation(_population, function);
+            UpdateGlobalBest(_population);
+            _initialized = true;
+            _currentGeneration = 0;
+        }
+        else if (_population != null)
+        {
+            double progress = (double)_currentGeneration / Math.Max(1, _generations);
+            _population = PerformEvolutionStep(_population, progress);
+            EvaluatePopulation(_population, function);
+            UpdateGlobalBest(_population);
+            _currentGeneration++;
         }
 
-        FinalizeResult(population, X);
+        if (_population != null)
+        {
+            FinalizeResult(_population, X);
+        }
     }
 
     public double Solve()
@@ -323,7 +336,13 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
         while (population.Count < _populationSize)
         {
             var ind = new Individual(_geneCount);
-            for (int j = 0; j < _geneCount; j++) ind.Genes[j] = _minValue + (_random.NextDouble() * (_maxValue - _minValue));
+            for (int j = 0; j < _geneCount; j++)
+            {
+                // Use Y bounds for second dimension if geneCount > 1
+                double minVal = (j == 1) ? _yMinValue : _minValue;
+                double maxVal = (j == 1) ? _yMaxValue : _maxValue;
+                ind.Genes[j] = minVal + (_random.NextDouble() * (maxVal - minVal));
+            }
             population.Add(ind);
         }
 
@@ -338,7 +357,10 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
             arguments[i] = new Argument { Values = new double[_geneCount] };
             for (int j = 0; j < _geneCount; j++)
             {
-                arguments[i].Values[j] = _minValue + (_random.NextDouble() * (_maxValue - _minValue));
+                // Use Y bounds for second dimension if geneCount > 1
+                double minVal = (j == 1) ? _yMinValue : _minValue;
+                double maxVal = (j == 1) ? _yMaxValue : _maxValue;
+                arguments[i].Values[j] = minVal + (_random.NextDouble() * (maxVal - minVal));
             }
         }
         return arguments;

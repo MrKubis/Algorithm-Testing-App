@@ -83,7 +83,7 @@ namespace AlgorithmTester.Infrastructure.Algorithms
                                 algorithm.Solve(function, x);
                                 reportGenerator.Evaluate(i, algorithm.XFinal, algorithm.XBest, algorithm.FBest, j + 1);
                                 
-                                // Send progress log every 5% generations or at the end
+                                // Send progress log every 5 generations or at the end
                                 if ((j + 1) % 5 == 0 || j == request.Steps - 1)
                                 {
                                     int currentProgress = (int)((double)(j + 1) / request.Steps * 100);

@@ -48,6 +48,11 @@ namespace AlgorithmTester.Infrastructure.Algorithms.Particle_Swarm_Optimization
         private readonly Random _random;
         private const string StateFileName = "pso_state.json";
 
+        // Incremental state so each Solve() call advances one iteration instead of a full run
+        private List<Particle>? _swarm;
+        private int _currentIteration = 0;
+        private bool _initialized = false;
+
         public ParticleSwarmOptimization(
             double swarmSize,
             double iterations,
@@ -77,18 +82,27 @@ namespace AlgorithmTester.Infrastructure.Algorithms.Particle_Swarm_Optimization
 
         public void Solve(Func<double[], double> function, Argument[] X)
         {
-            var swarm = InitializeSwarm(X);
-            EvaluateSwarm(swarm, function);
-            UpdateGlobalBest(swarm);
-
-            for (int i = 0; i < _iterations; i++)
+            // First call: initialize swarm and evaluate
+            if (!_initialized)
             {
-                UpdateParticlesVelocityAndPosition(swarm);
-                EvaluateSwarm(swarm, function);
-                UpdateGlobalBest(swarm);
+                _swarm = InitializeSwarm(X);
+                EvaluateSwarm(_swarm, function);
+                UpdateGlobalBest(_swarm);
+                _initialized = true;
+                _currentIteration = 0;
+            }
+            else if (_swarm != null)
+            {
+                UpdateParticlesVelocityAndPosition(_swarm);
+                EvaluateSwarm(_swarm, function);
+                UpdateGlobalBest(_swarm);
+                _currentIteration++;
             }
 
-            FinalizeResult(swarm, X);
+            if (_swarm != null)
+            {
+                FinalizeResult(_swarm, X);
+            }
         }
 
         public double Solve()
