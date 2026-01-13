@@ -24,12 +24,54 @@ interface TestResultsProps {
   results: TestResult | null;
 }
 
+const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5046';
+
+const downloadPDF = async (reportData: any, reportName: string) => {
+  try {
+    const response = await fetch(`${API_BASE}/api/algorithms/download-pdf`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(reportData),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to generate PDF');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    const timestamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0];
+    link.download = `${reportName}_${timestamp}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('Error downloading PDF:', error);
+    alert('Failed to download PDF. Please try again.');
+  }
+};
+
 export const TestResults: React.FC<TestResultsProps> = ({ results }) => {
   if (!results) return null;
 
   return (
     <div className="card results-card" style={{ marginTop: '20px' }}>
-      <h2>Test Results</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+        <h2>Test Results</h2>
+        {results.rawData && (
+          <button
+            onClick={() => downloadPDF(results.rawData, results.algorithm)}
+            className="button button-primary button-small button-inline"
+          >
+            📄 Download PDF
+          </button>
+        )}
+      </div>
       <div className="results-grid">
         <div className="result-item">
           <label>Algorithm:</label>

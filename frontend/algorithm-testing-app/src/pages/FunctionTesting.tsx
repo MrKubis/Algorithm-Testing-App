@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
-import { FunctionSelector } from "../components/FunctionSelector";
-import { TestResults, TestResult } from "../components/TestResults";
+import { RunControls } from "../components/RunControls";
+import { AlgorithmResultCard } from "../components/AlgorithmResultCard";
+import { TestResult } from "../components/TestResults";
 import AlgorithmService, { Algorithm, AlgorithmParam } from "../services/AlgorithmService";
 import AlgorithmWebSocketService from "../services/AlgorithmWebSocketService";
 import { Log } from "../components/LogEntry";
+import { LogsPanel } from "../components/LogsPanel";
 import "../css/AlgorithmTesting.css";
 
 const BEST_PARAM_PRESETS: Record<string, Record<string, number>> = {
@@ -89,6 +91,66 @@ const FunctionTesting: React.FC = () => {
   const pauseRef = useRef<boolean>(false);
   const currentAlgoIndexRef = useRef<number>(0);
 
+  const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5046';
+
+  const downloadFunctionReportPDF = async () => {
+    try {
+      const completedResults = results.filter(r => r.status === "completed" && r.result);
+      if (completedResults.length === 0) {
+        alert("No completed results to download. Please run the tests first.");
+        return;
+      }
+
+      // Build a composite function report from all algorithm results, including generations and params
+      const compositeReport = {
+        FunctionInfo: {
+          FunctionName: selectedFunction,
+          minValue: completedResults[0]?.result?.evaluations?.[0]?.minValue ?? -5,
+          maxValue: completedResults[0]?.result?.evaluations?.[0]?.maxValue ?? 5,
+        },
+        StepsCount: completedResults[0]?.result?.stepsCount ?? 250,
+        Evaluations: completedResults.map(r => {
+          const eval0 = r.result?.evaluations?.[0] as any;
+          return {
+            AlgorithmName: r.algorithmName,
+            FBest: eval0?.FBest ?? 0,
+            XBest: eval0?.XBest ?? null,
+            XFinal: eval0?.XFinal ?? [],
+            Step: eval0?.Step ?? r.result?.stepsCount ?? 0,
+            Generations: eval0?.Generations ?? [],
+            ParamValues: r.result?.paramValues ?? {},
+          };
+        }),
+      };
+
+      const response = await fetch(`${API_BASE}/api/algorithms/download-pdf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(compositeReport),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const timestamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0];
+      link.download = `FunctionReport_${selectedFunction}_${timestamp}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      alert('Failed to download PDF. Please try again.');
+    }
+  };
+
   useEffect(() => {
     const load = async () => {
       const list = await AlgorithmService.getAlgorithms();
@@ -103,6 +165,8 @@ const FunctionTesting: React.FC = () => {
   const addLog = (message: string, type: Log["type"] = "info") => {
     setLogs(prev => [...prev, { message, type, timestamp: new Date().toLocaleTimeString() }]);
   };
+
+  const clearLogs = () => setLogs([]);
 
   const applyDomains = (params: AlgorithmParam[], funcName: string) => {
     const domain = getFunctionDefaults(funcName);
@@ -355,77 +419,48 @@ const FunctionTesting: React.FC = () => {
       </div>
       <div className="testing-layout">
         <div className="control-section sticky-controls">
-          <FunctionSelector
+          <RunControls
             selectedFunction={selectedFunction}
+            isRunning={isRunning}
+            isPaused={isPaused}
             onFunctionChange={setSelectedFunction}
-            disabled={isRunning}
+            onStart={startRun}
+            onPause={pauseRun}
+            onResume={() => {
+              pauseRef.current = false;
+              setIsPaused(false);
+              if (wsRef.current && wsRef.current.isConnected()) {
+                wsRef.current.sendCommand("RESUME");
+                addLog("Resuming algorithm execution...", "info");
+              }
+            }}
+            onStop={stopRun}
           />
-          <div className="button-group full-width">
-            <button 
-              className="button button-primary run-button-fixed" 
-              onClick={() => {
-                if (isPaused) {
-                  // Resume
-                  pauseRef.current = false;
-                  setIsPaused(false);
-                  if (wsRef.current && wsRef.current.isConnected()) {
-                    wsRef.current.sendCommand("RESUME");
-                    addLog("Resuming algorithm execution...", "info");
-                  }
-                } else if (isRunning) {
-                  // Pause
-                  pauseRun();
-                } else {
-                  // Start fresh
-                  startRun();
-                }
-              }}
-              disabled={!selectedFunction}
-              style={{ flex: 1 }}
-            >
-              {isPaused ? "▶ Resume" : isRunning ? "⏸ Pause" : "▶ Run Across Algorithms"}
-            </button>
-            {(isRunning || isPaused) && (
-              <button 
-                className="button button-danger run-button-fixed" 
-                onClick={stopRun}
-                style={{ flex: 0.3 }}
-              >
-                ⏹ Stop
-              </button>
-            )}
-          </div>
-          <div className="card log-card">
-            <h3>Logs</h3>
-            <div className="logs-container compact">
-              {logs.length === 0 && <p className="muted-text">No logs yet.</p>}
-              {logs.map((l, idx) => (
-                <div
-                  key={idx}
-                  className={`log-line ${l.type === "error" ? "log-line-error" : l.type === "warning" ? "log-line-warning" : "log-line-info"}`}
-                >
-                  <span className="log-time">[{l.timestamp}]</span> {l.message}
-                </div>
-              ))}
-            </div>
-          </div>
+          <LogsPanel logs={logs} onClear={clearLogs} />
         </div>
         <div className="log-panel">
           {results.length === 0 && <p className="muted-text">Select a function and run to see results for each algorithm.</p>}
+          {results.some(r => r.status === "completed") && (
+            <div className="button-group" style={{ marginBottom: '15px' }}>
+              <button
+                onClick={downloadFunctionReportPDF}
+                className="button button-primary button-small button-inline"
+              >
+                📄 Download Complete Report PDF
+              </button>
+            </div>
+          )}
           <div className="function-results-stack">
-            {results.map(r => {
-              const statusLabel = r.status === "completed" ? "Completed" : r.status === "running" ? "Running" : r.status === "error" ? "Error" : "Pending";
-              return (
-                <div key={r.algorithmId} className="card result-card">
-                  <div className="result-card__header">
-                    <h3>{r.algorithmName}</h3>
-                    <span className={`status-chip status-${r.status}`}>{statusLabel}</span>
-                  </div>
-                  {r.error && <p className="error-text">Error: {r.error}</p>}
-                  {r.result && <TestResults results={r.result} />}
-                </div>
-              );
-            })}
+            {results.map(r => (
+              <AlgorithmResultCard
+                key={r.algorithmId}
+                algorithmId={r.algorithmId}
+                algorithmName={r.algorithmName}
+                status={r.status}
+                result={r.result}
+                error={r.error}
+              />
+            ))}
           </div>
         </div>
       </div>

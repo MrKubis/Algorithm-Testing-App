@@ -5,6 +5,7 @@ using AlgorithmTester.Infrastructure.Algorithms;
 using AlgorithmTester.Infrastructure.Algorithms.Genetic_Algorithm;
 using AlgorithmTester.Domain.Interfaces;
 using AlgorithmTester.Infrastructure.Algorithms.Particle_Swarm_Optimization;
+using AlgorithmTester.Infrastructure.Reports;
 
 namespace AlgorithmTester.API.Controllers;
 
@@ -93,6 +94,50 @@ public class AlgorithmsController : ControllerBase
             Console.WriteLine($"Exception in GetAlgorithmDetails: {ex.GetType().Name} - {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
             return StatusCode(500, new { error = "Internal server error", details = ex.Message });
+        }
+    }
+
+    [HttpPost("download-pdf")]
+    public IActionResult DownloadAlgorithmPdf([FromBody] object reportData)
+    {
+        try
+        {
+            var pdfGenerator = new PdfReportGenerator();
+            var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var jsonString = System.Text.Json.JsonSerializer.Serialize(reportData);
+            
+            // Try to parse as AlgorithmReport first
+            try
+            {
+                var algorithmReport = System.Text.Json.JsonSerializer.Deserialize<AlgorithmTester.Infrastructure.Reports.AlgorithmReport>(jsonString, options);
+                if (algorithmReport != null)
+                {
+                    var pdfBytes = pdfGenerator.GenerateAlgorithmPdf(algorithmReport);
+                    string fileName = $"AlgorithmReport_{algorithmReport.AlgorithmInfo.AlgorithmName}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+                    return File(pdfBytes, "application/pdf", fileName);
+                }
+            }
+            catch { }
+
+            // Try to parse as FunctionReport
+            try
+            {
+                var functionReport = System.Text.Json.JsonSerializer.Deserialize<AlgorithmTester.Infrastructure.Reports.FunctionReport>(jsonString, options);
+                if (functionReport != null)
+                {
+                    var pdfBytes = pdfGenerator.GenerateFunctionPdf(functionReport);
+                    string fileName = $"FunctionReport_{functionReport.FunctionInfo.FunctionName}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+                    return File(pdfBytes, "application/pdf", fileName);
+                }
+            }
+            catch { }
+
+            return BadRequest(new { error = "Unable to parse report data" });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception in DownloadAlgorithmPdf: {ex.Message}");
+            return StatusCode(500, new { error = "Failed to generate PDF", details = ex.Message });
         }
     }
 }

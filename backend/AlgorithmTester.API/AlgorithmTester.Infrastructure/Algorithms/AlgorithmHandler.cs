@@ -81,7 +81,7 @@ namespace AlgorithmTester.Infrastructure.Algorithms
                                 pauseEvent.Wait(cancellationToken);
                                 cancellationToken.ThrowIfCancellationRequested();
                                 algorithm.Solve(function, x);
-                                reportGenerator.Evaluate(i, algorithm.XFinal, algorithm.XBest, algorithm.FBest);
+                                reportGenerator.Evaluate(i, algorithm.XFinal, algorithm.XBest, algorithm.FBest, j + 1);
                                 
                                 // Send progress log every 5% generations or at the end
                                 if ((j + 1) % 5 == 0 || j == request.Steps - 1)
@@ -126,11 +126,11 @@ namespace AlgorithmTester.Infrastructure.Algorithms
                                 functionInfo,
                                 function);
                             Argument[] X = HandleArguments(null, algorithm);
-                            reportGenerator.CreateEvaluation(request.AlgorithmList[i].AlgorithmName, request.minValue, request.maxValue);
+                            reportGenerator.CreateEvaluation(request.AlgorithmList[i].AlgorithmName, request.minValue, request.maxValue, request.AlgorithmList[i].ParamValues);
                             for(int j = 0 ; j < request.Steps; j++)
                             {
                                      algorithm.Solve(function, X); 
-                                     reportGenerator.Evaluate(i,algorithm.XFinal, algorithm.XBest, algorithm.FBest);
+                                     reportGenerator.Evaluate(i,algorithm.XFinal, algorithm.XBest, algorithm.FBest, j + 1);
                             }
                         }    
                         break;

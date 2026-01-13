@@ -39,7 +39,7 @@ namespace AlgorithmTester.Infrastructure.Reports
             };
 
         }
-        public void CreateEvaluation(string name,double minValue, double maxValue)
+        public void CreateEvaluation(string name,double minValue, double maxValue, Dictionary<string,double>? paramValues = null)
         {
             if (_algorithmReport != null && _functionReport != null)
             {
@@ -52,14 +52,18 @@ namespace AlgorithmTester.Infrastructure.Reports
                     Function = name,
                     minValue = minValue,
                     maxValue = maxValue,
-                    Step = 0
+                    Step = 0,
+                    XFinal = new List<Argument>()
                 });
             }
             else if (_functionReport != null)
             {
                 _functionReport.Evaluations.Add(new AlgorithmEvaluation
                 {
-                    AlgortihmName = name
+                    AlgorithmName = name,
+                    Step = 0,
+                    XFinal = new List<Argument>(),
+                    ParamValues = paramValues
                 });
             }
             else
@@ -68,7 +72,7 @@ namespace AlgorithmTester.Infrastructure.Reports
             }
         }
 
-        public void Evaluate(int i ,List<Argument> XFinal, Argument XBest, double FBest)
+        public void Evaluate(int i ,List<Argument> XFinal, Argument XBest, double FBest, int generation)
         {
             if (_algorithmReport != null && _functionReport != null)
             {
@@ -79,7 +83,13 @@ namespace AlgorithmTester.Infrastructure.Reports
                 _algorithmReport.Evaluations[i].XBest = XBest;
                 _algorithmReport.Evaluations[i].FBest = FBest;
                 _algorithmReport.Evaluations[i].XFinal = XFinal;
-                _algorithmReport.Evaluations[i].Step += 1;
+                _algorithmReport.Evaluations[i].Step = generation;
+                _algorithmReport.Evaluations[i].Generations.Add(new GenerationRecord
+                {
+                    Generation = generation,
+                    FBest = FBest,
+                    XBest = XBest
+                });
 
             }
             else if (_functionReport != null)
@@ -87,7 +97,13 @@ namespace AlgorithmTester.Infrastructure.Reports
                 _functionReport.Evaluations[i].XBest = XBest;
                 _functionReport.Evaluations[i].FBest = FBest;
                 _functionReport.Evaluations[i].XFinal = XFinal;
-                _functionReport.Evaluations[i].Step += 1;
+                _functionReport.Evaluations[i].Step = generation;
+                _functionReport.Evaluations[i].Generations.Add(new GenerationRecord
+                {
+                    Generation = generation,
+                    FBest = FBest,
+                    XBest = XBest
+                });
             }
             else
             {
@@ -130,6 +146,28 @@ namespace AlgorithmTester.Infrastructure.Reports
             else if (_functionReport != null)
             {
                 return JsonSerializer.Serialize(_functionReport);
+            }
+            else
+            {
+                throw new Exception("No report found");
+            }
+        }
+
+        public byte[] ConvertReportToPDF()
+        {
+            var pdfGenerator = new PdfReportGenerator();
+            
+            if (_algorithmReport != null && _functionReport != null)
+            {
+                throw new InvalidOperationException("Cannot have 2 reports");
+            }
+            if (_algorithmReport != null)
+            {
+                return pdfGenerator.GenerateAlgorithmPdf(_algorithmReport);
+            }
+            else if (_functionReport != null)
+            {
+                return pdfGenerator.GenerateFunctionPdf(_functionReport);
             }
             else
             {

@@ -17,5 +17,6 @@ namespace AlgorithmTester.Infrastructure.Reports
         public List<Argument> XFinal { get; set; }
         public Argument? XBest {  get; set; }
         public double? FBest { get; set; }
+        public List<GenerationRecord> Generations { get; set; } = new List<GenerationRecord>();
     }
 }
