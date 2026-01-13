@@ -45,10 +45,10 @@ const AlgorithmTesting: React.FC = () => {
   const updateParamsWithDomainBoundaries = (params: AlgorithmParam[], funcName: string) => {
     const domain = getFunctionDefaults(funcName);
     return params.map(param => {
-      if (param.name === "minValue") {
+      if (param.name === "xMinValue" || param.name === "minValue") {
         return { ...param, lowerBoundary: domain.min, upperBoundary: domain.max };
       }
-      if (param.name === "maxValue") {
+      if (param.name === "xMaxValue" || param.name === "maxValue") {
         return { ...param, lowerBoundary: domain.min, upperBoundary: domain.max };
       }
       return param;
@@ -95,17 +95,21 @@ const AlgorithmTesting: React.FC = () => {
       }
       try {
         let details = await AlgorithmService.getAlgorithmDetails(selectedAlgorithm);
+        // Rename min/max to xMin/xMax on frontend
+        const renamedParams = details.params.map(p => {
+          if (p.name === "minValue") return { ...p, name: "xMinValue", description: "X min" };
+          if (p.name === "maxValue") return { ...p, name: "xMaxValue", description: "X max" };
+          return p;
+        });
         // Apply domain boundaries based on selected function
-        let updatedParams = updateParamsWithDomainBoundaries(details.params, selectedFunction);
+        let updatedParams = updateParamsWithDomainBoundaries(renamedParams, selectedFunction);
         
         // For Beale and Bukin functions, add Y dimension parameters
         const isBealOrBukinFunc = selectedFunction === "Beale" || selectedFunction === "Bukin";
         if (isBealOrBukinFunc) {
           const domain = getFunctionDefaults(selectedFunction);
           const yDomain = getFunctionYDefaults(selectedFunction);
-          // Add Y min/max parameters
-          updatedParams = [
-            ...updatedParams,
+          const yParams = [
             {
               name: "YminValue",
               description: "Y dimension minimum value",
@@ -121,6 +125,17 @@ const AlgorithmTesting: React.FC = () => {
               upperBoundary: yDomain.max
             }
           ];
+          const insertIndex = Math.max(
+            updatedParams.findIndex(p => p.name === "xMaxValue"),
+            updatedParams.findIndex(p => p.name === "xMinValue")
+          );
+          if (insertIndex >= 0) {
+            const before = updatedParams.slice(0, insertIndex + 1);
+            const after = updatedParams.slice(insertIndex + 1);
+            updatedParams = [...before, ...yParams, ...after];
+          } else {
+            updatedParams = [...updatedParams, ...yParams];
+          }
         }
         
         setAlgorithmParams(updatedParams);
@@ -144,8 +159,7 @@ const AlgorithmTesting: React.FC = () => {
       if (isBealOrBukinFunc) {
         const hasYParams = updatedParams.some(p => p.name === "YminValue" || p.name === "YmaxValue");
         if (!hasYParams) {
-          updatedParams = [
-            ...updatedParams,
+          const yParams = [
             {
               name: "YminValue",
               description: "Y dimension minimum value",
@@ -161,6 +175,17 @@ const AlgorithmTesting: React.FC = () => {
               upperBoundary: yDomain.max
             }
           ];
+          const insertIndex = Math.max(
+            updatedParams.findIndex(p => p.name === "xMaxValue"),
+            updatedParams.findIndex(p => p.name === "xMinValue")
+          );
+          if (insertIndex >= 0) {
+            const before = updatedParams.slice(0, insertIndex + 1);
+            const after = updatedParams.slice(insertIndex + 1);
+            updatedParams = [...before, ...yParams, ...after];
+          } else {
+            updatedParams = [...updatedParams, ...yParams];
+          }
         } else {
           // Update existing Y parameters with new domain
           updatedParams = updatedParams.map(p => {
@@ -181,8 +206,8 @@ const AlgorithmTesting: React.FC = () => {
       setParamValues(prev => {
         const updated: Record<string, number> = {
           ...prev,
-          minValue: domain.min,
-          maxValue: domain.max
+          xMinValue: domain.min,
+          xMaxValue: domain.max
         };
         
         if (isBealOrBukinFunc) {
@@ -352,10 +377,10 @@ const AlgorithmTesting: React.FC = () => {
         defaultMin = -15.0; defaultMax = -5.0;
       }
 
-      const userMin = finalParamValues["minValue"];
+      const userMin = finalParamValues["xMinValue"];
       const finalMin = userMin !== undefined ? userMin : defaultMin;
 
-      const userMax = finalParamValues["maxValue"];
+      const userMax = finalParamValues["xMaxValue"];
       const finalMax = userMax !== undefined ? userMax : defaultMax;
 
       // For Beale and Bukin functions, add Y dimension parameters
@@ -380,11 +405,22 @@ const AlgorithmTesting: React.FC = () => {
         };
       }
 
+      // Convert frontend param names back to backend expected names
+      const backendParamValues: Record<string, number> = { ...finalParamValues };
+      if (backendParamValues.hasOwnProperty("xMinValue")) {
+        backendParamValues.minValue = backendParamValues.xMinValue;
+        delete backendParamValues.xMinValue;
+      }
+      if (backendParamValues.hasOwnProperty("xMaxValue")) {
+        backendParamValues.maxValue = backendParamValues.xMaxValue;
+        delete backendParamValues.xMaxValue;
+      }
+
       const request = {
         Type: "Algorithm",
         Body: {
           AlgorithmName: selectedAlgorithm,
-          ParamValues: finalParamValues,
+          ParamValues: backendParamValues,
           Steps: steps,
           FunctionList: [functionConfig]
         }
@@ -472,14 +508,14 @@ const AlgorithmTesting: React.FC = () => {
               onParamChange={setParamValues}
               disabled={isRunning}
               defaultOverrides={{
-                minValue: currentDefaults.min,
-                maxValue: currentDefaults.max,
+                xMinValue: currentDefaults.min,
+                xMaxValue: currentDefaults.max,
                 ...(isBealeOrBukin && {
                   YminValue: currentYDefaults.min,
                   YmaxValue: currentYDefaults.max
                 })
               }}
-              disabledParams={isBealeOrBukin ? ["geneCount", "dimensions", "YminValue", "YmaxValue"] : []}
+              disabledParams={isBealeOrBukin ? ["geneCount", "dimensions"] : []}
             />
           )}
         </div>
