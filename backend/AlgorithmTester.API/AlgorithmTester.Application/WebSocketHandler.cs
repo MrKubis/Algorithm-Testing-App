@@ -12,12 +12,12 @@ public class WebSocketHandler
     public static async Task Echo(WebSocket webSocket)
     {
     //Zapelnienie bufora wiadomością
-        var reportGenerator = new ReportGenerator();
         
-        // Per-connection state
+        // Per-connection state - Initialize fresh for each connection
         Task? algorithmTask = null;
         CancellationTokenSource? cts = null;
         var pauseEvent = new ManualResetEventSlim(true);
+        var reportGenerator = new ReportGenerator();
         
         bool algorithmStateLoaded = false;
         string? requestType = null;
@@ -87,7 +87,12 @@ public class WebSocketHandler
                                 {
                                     if (algorithmTask != null && !algorithmTask.IsCompleted) throw new InvalidDataException("Algorithm already is started");
                                     if (requestType == null) throw new InvalidDataException("No request found");
+                                    
+                                    // Fresh state for new run
+                                    reportGenerator = new ReportGenerator();
                                     cts = new CancellationTokenSource();
+                                    pauseEvent.Dispose();
+                                    pauseEvent = new ManualResetEventSlim(true);
                                     pauseEvent.Set();
                                     
                                     Console.WriteLine("[START] Setting up log callback and starting algorithm...");
@@ -215,6 +220,10 @@ public class WebSocketHandler
         {
             cts.Dispose();
             cts = null;
+        }
+        if (pauseEvent != null)
+        {
+            pauseEvent.Dispose();
         }
     }
     private static Task SendError(WebSocket webSocket, string message)

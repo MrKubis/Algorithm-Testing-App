@@ -281,6 +281,7 @@ const AlgorithmTesting: React.FC = () => {
     setLogs([]);
     setTestResults(null);
     abortControllerRef.current = new AbortController();
+    const startTime = performance.now();
 
     const algorithmName = algorithms.find((a) => a.id === selectedAlgorithm)?.name;
     addLog(`Starting test for ${algorithmName}...`, "info");
@@ -339,6 +340,12 @@ const AlgorithmTesting: React.FC = () => {
             
             // Handle Final Report
             if (message.AlgorithmInfo || message.Evaluations) {
+               const endTime = performance.now();
+               const executionTimeMs = endTime - startTime;
+               const executionTimeStr = executionTimeMs < 1000 
+                 ? `${executionTimeMs.toFixed(0)}ms`
+                 : `${(executionTimeMs / 1000).toFixed(2)}s`;
+               
                console.log("[Final Report Received]", {
                  algorithmInfo: message.AlgorithmInfo,
                  evaluations: message.Evaluations,
@@ -349,7 +356,7 @@ const AlgorithmTesting: React.FC = () => {
                setTestResults({
                   algorithm: message.AlgorithmInfo?.AlgorithmName || algorithmName || "Unknown",
                   status: "Completed",
-                  executionTime: "N/A",
+                  executionTime: executionTimeStr,
                   stepsCount: message.StepsCount || 0,
                   evaluations: message.Evaluations || [],
                   paramValues: message.AlgorithmInfo?.ParamValues || {},

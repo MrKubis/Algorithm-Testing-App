@@ -163,6 +163,7 @@ const FunctionTesting: React.FC = () => {
 
   const runForAlgorithm = async (algo: Algorithm, funcName: string): Promise<RunResult> => {
     const baseResult: RunResult = { algorithmId: algo.id, algorithmName: algo.name, status: "running" };
+    const startTime = performance.now();
     try {
       addLog(`Starting ${algo.name}...`, "info");
       const details = await AlgorithmService.getAlgorithmDetails(algo.id);
@@ -199,18 +200,30 @@ const FunctionTesting: React.FC = () => {
 
       await new Promise<void>(async (resolve) => {
         await wsRef.current!.connect((message: any) => {
+          // Handle log messages (generation updates)
+          if (typeof message === "object" && message?.type === "log") {
+            addLog(`[${algo.name}] ${message.message}`, "info");
+            return;
+          }
+
           if (typeof message === "object" && message?.AlgorithmInfo) {
+            const endTime = performance.now();
+            const executionTimeMs = endTime - startTime;
+            const executionTimeStr = executionTimeMs < 1000 
+              ? `${executionTimeMs.toFixed(0)}ms`
+              : `${(executionTimeMs / 1000).toFixed(2)}s`;
+            
             const result: TestResult = {
               algorithm: message.AlgorithmInfo.AlgorithmName || algo.name,
               status: "Completed",
-              executionTime: "N/A",
+              executionTime: executionTimeStr,
               stepsCount: message.StepsCount || steps,
               evaluations: message.Evaluations || [],
               paramValues: message.AlgorithmInfo.ParamValues || paramValues,
               rawData: message,
             };
             setResults(prev => prev.map(r => r.algorithmId === algo.id ? { ...r, status: "completed", result } : r));
-            addLog(`${algo.name} completed with best: ${result.evaluations?.[result.evaluations.length - 1]?.FBest?.toExponential(4) || 'N/A'}`, "success");
+            addLog(`${algo.name} completed with best: ${result.evaluations?.[result.evaluations.length - 1]?.FBest?.toExponential(4) || 'N/A'} (${executionTimeStr})`, "success");
             resolve();
           }
           if (typeof message === "string" && message === "done") {
