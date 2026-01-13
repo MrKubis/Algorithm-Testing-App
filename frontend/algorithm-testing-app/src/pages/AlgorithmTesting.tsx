@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Header } from "../components/Header";
 import { AlgorithmSelector, Algorithm } from "../components/AlgorithmSelector";
-import { FunctionSelector } from "../components/FunctionSelector";
+import { MultiFunctionSelector } from "../components/MultiFunctionSelector";
 import { ParameterInput } from "../components/ParameterInput";
 import { ControlPanel } from "../components/ControlPanel";
 import { LogsPanel } from "../components/LogsPanel";
 import { TestResults, TestResult } from "../components/TestResults";
+import { FunctionResultCard } from "../components/FunctionResultCard";
 import { Log } from "../components/LogEntry";
 import AlgorithmService, { AlgorithmParam } from "../services/AlgorithmService";
 import AlgorithmWebSocketService from "../services/AlgorithmWebSocketService";
@@ -18,7 +19,7 @@ const AlgorithmTesting: React.FC = () => {
   const [algorithmError, setAlgorithmError] = useState<string | null>(null);
   const [algorithmParams, setAlgorithmParams] = useState<AlgorithmParam[]>([]);
   const [paramValues, setParamValues] = useState<Record<string, number>>({});
-  const [selectedFunction, setSelectedFunction] = useState<string>("Sphere");
+  const [selectedFunctions, setSelectedFunctions] = useState<string[]>(["Sphere"]);
   const wsServiceRef = useRef<AlgorithmWebSocketService | null>(null);
 
   const getFunctionDefaults = (funcName: string) => {
@@ -38,12 +39,34 @@ const AlgorithmTesting: React.FC = () => {
       default: return getFunctionDefaults(funcName);
     }
   };
-  const currentDefaults = getFunctionDefaults(selectedFunction);
-  const currentYDefaults = getFunctionYDefaults(selectedFunction);
 
-  // Update algorithm parameters with domain boundaries based on selected function
-  const updateParamsWithDomainBoundaries = (params: AlgorithmParam[], funcName: string) => {
-    const domain = getFunctionDefaults(funcName);
+  // Calculate combined domain from all selected functions (widest range)
+  const getCombinedDomain = (functions: string[]) => {
+    if (functions.length === 0) return { min: -5.0, max: 5.0 };
+    
+    const domains = functions.map(f => getFunctionDefaults(f));
+    return {
+      min: Math.min(...domains.map(d => d.min)),
+      max: Math.max(...domains.map(d => d.max))
+    };
+  };
+
+  const getCombinedYDomain = (functions: string[]) => {
+    if (functions.length === 0) return { min: -5.0, max: 5.0 };
+    
+    const domains = functions.map(f => getFunctionYDefaults(f));
+    return {
+      min: Math.min(...domains.map(d => d.min)),
+      max: Math.max(...domains.map(d => d.max))
+    };
+  };
+
+  const currentDefaults = getCombinedDomain(selectedFunctions);
+  const currentYDefaults = getCombinedYDomain(selectedFunctions);
+  const hasBealeOrBukin = selectedFunctions.some(f => f === "Beale" || f === "Bukin");
+
+  // Update algorithm parameters with domain boundaries based on combined selected functions
+  const updateParamsWithDomainBoundaries = (params: AlgorithmParam[], domain: { min: number, max: number }) => {
     return params.map(param => {
       if (param.name === "xMinValue" || param.name === "minValue") {
         return { ...param, lowerBoundary: domain.min, upperBoundary: domain.max };
@@ -80,11 +103,18 @@ const AlgorithmTesting: React.FC = () => {
   const [selectedAlgorithm, setSelectedAlgorithm] = useState<string>("");
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [isPaused, setIsPaused] = useState<boolean>(false);
-  const [testResults, setTestResults] = useState<TestResult | null>(null);
+  const [functionResults, setFunctionResults] = useState<Array<{
+    functionName: string;
+    status: "pending" | "running" | "completed" | "error";
+    result?: TestResult;
+    error?: string;
+  }>>([]);
   const [logs, setLogs] = useState<Log[]>([]);
   const [progress, setProgress] = useState<number>(0);
   const [isBealeOrBukin, setIsBealeOrBukin] = useState<boolean>(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const currentFunctionIndexRef = useRef<number>(0);
+  const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:5046';
 
   // Load algorithm parameters
   useEffect(() => {
@@ -101,14 +131,14 @@ const AlgorithmTesting: React.FC = () => {
           if (p.name === "maxValue") return { ...p, name: "xMaxValue", description: "X max" };
           return p;
         });
-        // Apply domain boundaries based on selected function
-        let updatedParams = updateParamsWithDomainBoundaries(renamedParams, selectedFunction);
+        // Apply domain boundaries based on combined selected functions
+        const combinedDomain = getCombinedDomain(selectedFunctions);
+        let updatedParams = updateParamsWithDomainBoundaries(renamedParams, combinedDomain);
         
         // For Beale and Bukin functions, add Y dimension parameters
-        const isBealOrBukinFunc = selectedFunction === "Beale" || selectedFunction === "Bukin";
-        if (isBealOrBukinFunc) {
-          const domain = getFunctionDefaults(selectedFunction);
-          const yDomain = getFunctionYDefaults(selectedFunction);
+        const hasBealeOrBukinFunc = selectedFunctions.some(f => f === "Beale" || f === "Bukin");
+        if (hasBealeOrBukinFunc) {
+          const yDomain = getCombinedYDomain(selectedFunctions);
           const yParams = [
             {
               name: "YminValue",
@@ -144,19 +174,19 @@ const AlgorithmTesting: React.FC = () => {
       }
     };
     loadAlgorithmDetails();
-  }, [selectedAlgorithm, selectedFunction]);
+  }, [selectedAlgorithm, selectedFunctions]);
 
-  // Update domain boundaries when selected function changes
+  // Update domain boundaries when selected functions change
   useEffect(() => {
     if (algorithmParams.length > 0) {
-      const domain = getFunctionDefaults(selectedFunction);
-      const yDomain = getFunctionYDefaults(selectedFunction);
-      const isBealOrBukinFunc = selectedFunction === "Beale" || selectedFunction === "Bukin";
+      const combinedDomain = getCombinedDomain(selectedFunctions);
+      const yDomain = getCombinedYDomain(selectedFunctions);
+      const hasBealeOrBukinFunc = selectedFunctions.some(f => f === "Beale" || f === "Bukin");
       
-      let updatedParams = updateParamsWithDomainBoundaries(algorithmParams, selectedFunction);
+      let updatedParams = updateParamsWithDomainBoundaries(algorithmParams, combinedDomain);
       
       // Update Y parameters if they exist, or add them if Beale/Bukin
-      if (isBealOrBukinFunc) {
+      if (hasBealeOrBukinFunc) {
         const hasYParams = updatedParams.some(p => p.name === "YminValue" || p.name === "YmaxValue");
         if (!hasYParams) {
           const yParams = [
@@ -206,11 +236,11 @@ const AlgorithmTesting: React.FC = () => {
       setParamValues(prev => {
         const updated: Record<string, number> = {
           ...prev,
-          xMinValue: domain.min,
-          xMaxValue: domain.max
+          xMinValue: combinedDomain.min,
+          xMaxValue: combinedDomain.max
         };
         
-        if (isBealOrBukinFunc) {
+        if (hasBealeOrBukinFunc) {
           updated.YminValue = yDomain.min;
           updated.YmaxValue = yDomain.max;
         } else {
@@ -222,14 +252,14 @@ const AlgorithmTesting: React.FC = () => {
         return updated;
       });
     }
-  }, [selectedFunction]);
+  }, [selectedFunctions]);
 
   // Auto-set dimensions for Beale and Bukin functions (they require exactly 2 dimensions)
   useEffect(() => {
-    const isBealOrBukinFunc = selectedFunction === "Beale" || selectedFunction === "Bukin";
-    setIsBealeOrBukin(isBealOrBukinFunc);
+    const hasBealeOrBukinFunc = selectedFunctions.some(f => f === "Beale" || f === "Bukin");
+    setIsBealeOrBukin(hasBealeOrBukinFunc);
     
-    if (isBealOrBukinFunc && algorithmParams.length > 0) {
+    if (hasBealeOrBukinFunc && algorithmParams.length > 0) {
       // For Genetic Algorithm, set geneCount to 2
       // For PSO, set dimensions to 2
       const updatedParams = { ...paramValues };
@@ -246,10 +276,89 @@ const AlgorithmTesting: React.FC = () => {
         setParamValues(updatedParams);
       }
     }
-  }, [selectedFunction, algorithmParams]);
+  }, [selectedFunctions, algorithmParams]);
 
   const addLog = (message: string, type: Log["type"] = "info"): void => {
     setLogs((prev) => [...prev, { message, type, timestamp: new Date().toLocaleTimeString() }]);
+  };
+
+  const downloadAlgorithmReportPDF = async () => {
+    try {
+      const completedResults = functionResults.filter(r => r.status === "completed" && r.result);
+      console.log("[PDF Download] Total functionResults:", functionResults);
+      console.log("[PDF Download] Completed results count:", completedResults.length);
+      console.log("[PDF Download] Completed results:", completedResults);
+      
+      if (completedResults.length === 0) {
+        alert("No completed results to download. Please run the tests first.");
+        return;
+      }
+
+      // Build a composite algorithm report from all function results
+      const algorithmName = algorithms.find((a) => a.id === selectedAlgorithm)?.name || selectedAlgorithm;
+      
+      // Each individual result has evaluations array with one entry per function tested
+      // Since we're testing sequentially, each result has 1 evaluation with all generations
+      const compositeReport = {
+        AlgorithmInfo: {
+          AlgorithmName: algorithmName,
+          ParamValues: completedResults[0]?.result?.paramValues ?? {},
+        },
+        StepsCount: completedResults[0]?.result?.stepsCount ?? 100,
+        Evaluations: completedResults.map(r => {
+          // Each result's evaluations array contains one entry for that function
+          const evaluation = r.result?.evaluations?.[0] as any;
+          console.log(`[PDF Download] Processing ${r.functionName}:`, {
+            functionName: r.functionName,
+            hasResult: !!r.result,
+            evaluationsLength: r.result?.evaluations?.length,
+            evaluation: evaluation,
+            generations: evaluation?.Generations?.length
+          });
+          return {
+            Function: r.functionName,
+            FBest: evaluation?.FBest ?? 0,
+            XBest: evaluation?.XBest ?? null,
+            XFinal: evaluation?.XFinal ?? [],
+            Step: evaluation?.Step ?? r.result?.stepsCount ?? 0,
+            Generations: evaluation?.Generations ?? [],
+            minValue: evaluation?.minValue ?? -5,
+            maxValue: evaluation?.maxValue ?? 5,
+            YminValue: evaluation?.YminValue,
+            YmaxValue: evaluation?.YmaxValue,
+          };
+        }),
+      };
+      
+      console.log("[PDF Download] Composite report:", compositeReport);
+      console.log("[PDF Download] Evaluations count:", compositeReport.Evaluations.length);
+
+      const response = await fetch(`${API_BASE}/api/algorithms/download-pdf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(compositeReport),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate PDF');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const timestamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0];
+      link.download = `AlgorithmReport_${algorithmName}_${timestamp}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      alert('Failed to download PDF. Please try again.');
+    }
   };
 
   const startTest = async (): Promise<void> => {
@@ -258,10 +367,15 @@ const AlgorithmTesting: React.FC = () => {
       return;
     }
 
-    // For Beale and Bukin, ensure dimensions are set to 2
-    const isBealOrBukinFunc = selectedFunction === "Beale" || selectedFunction === "Bukin";
+    if (selectedFunctions.length === 0) {
+      addLog("Please select at least one function", "error");
+      return;
+    }
+
+    // Check if any selected function is Beale or Bukin
+    const hasBealeOrBukin = selectedFunctions.some(f => f === "Beale" || f === "Bukin");
     const finalParamValues = { ...paramValues };
-    if (isBealOrBukinFunc) {
+    if (hasBealeOrBukin) {
       if (selectedAlgorithm.includes("Genetic")) {
         finalParamValues["geneCount"] = 2;
       } else if (selectedAlgorithm.includes("Particle")) {
@@ -279,165 +393,44 @@ const AlgorithmTesting: React.FC = () => {
     setIsPaused(false);
     setProgress(0);
     setLogs([]);
-    setTestResults(null);
+    setFunctionResults(selectedFunctions.map(f => ({ functionName: f, status: "pending" })));
     abortControllerRef.current = new AbortController();
-    const startTime = performance.now();
+    currentFunctionIndexRef.current = 0;
 
     const algorithmName = algorithms.find((a) => a.id === selectedAlgorithm)?.name;
-    addLog(`Starting test for ${algorithmName}...`, "info");
+    addLog(`Starting test for ${algorithmName} on ${selectedFunctions.length} function(s)...`, "info");
 
     try {
-      // Create a fresh WebSocket service instance for this run
-      wsServiceRef.current = new AlgorithmWebSocketService();
-      
-      console.log("=".repeat(60));
-      console.log(`[Algorithm Started] ${algorithmName} with function: ${selectedFunction}`);
-      console.log(`[Parameters]:`, finalParamValues);
-      console.log("=".repeat(60));
-
-      if (wsServiceRef.current) {
-        await wsServiceRef.current.connect((message: any) => {
-          console.log("[WebSocket Message Received]", message);
-          
-          if (typeof message === "string" && message === "done") {
-             console.log("[DONE] Algorithm execution completed");
-             addLog("Algorithm execution completed", "success");
-             // Ensure UI updates by setting both flags
-             setIsRunning(false);
-             setIsPaused(false);
-             setProgress(100);
-             return;
-          }
-
-          // Handle Object Messages
-          if (typeof message === "object" && message !== null) {
-            console.log("[Object Message Type Check]", {
-              hasType: message.type,
-              hasError: message.error,
-              hasStatus: message.status,
-              hasProgress: message.progress,
-              hasAlgorithmInfo: message.AlgorithmInfo,
-              hasFunctionInfo: message.FunctionInfo,
-              hasAlgorithmReport: message.AlgorithmReport,
-              fullObject: message
-            });
-
-            if (message.type === "log") {
-              addLog(message.message, "info");
-              return;
-            }
-            if (message.error) {
-              addLog(`Error: ${message.error}`, "error");
-              setIsRunning(false);
-              setIsPaused(false);
-            }
-            if (message.status) {
-              addLog(message.status, "info");
-            }
-            if (message.progress) {
-              setProgress(message.progress);
-            }
-            
-            // Handle Final Report
-            if (message.AlgorithmInfo || message.Evaluations) {
-               const endTime = performance.now();
-               const executionTimeMs = endTime - startTime;
-               const executionTimeStr = executionTimeMs < 1000 
-                 ? `${executionTimeMs.toFixed(0)}ms`
-                 : `${(executionTimeMs / 1000).toFixed(2)}s`;
-               
-               console.log("[Final Report Received]", {
-                 algorithmInfo: message.AlgorithmInfo,
-                 evaluations: message.Evaluations,
-                 stepsCount: message.StepsCount,
-                 fullPayload: message
-               });
-               
-               setTestResults({
-                  algorithm: message.AlgorithmInfo?.AlgorithmName || algorithmName || "Unknown",
-                  status: "Completed",
-                  executionTime: executionTimeStr,
-                  stepsCount: message.StepsCount || 0,
-                  evaluations: message.Evaluations || [],
-                  paramValues: message.AlgorithmInfo?.ParamValues || {},
-                  rawData: message
-                });
-                setProgress(100);
-            }
-          }
-        });
-      }
-
-      // Handle both "generations" (for Genetic) and "iterations" (for PSO)
-      const userDefinedGenerations = finalParamValues["generations"] || finalParamValues["iterations"];
-      const steps = userDefinedGenerations ? userDefinedGenerations : 100;
-      let defaultMin = -5.0;
-      let defaultMax = 5.0;
-      
-      if (selectedFunction === "Rosenbrock") {
-        defaultMin = -2.048; defaultMax = 2.048;
-      } else if (selectedFunction === "Rastragin") {
-        defaultMin = -5.12; defaultMax = 5.12;
-      } else if (selectedFunction === "Beale") {
-        defaultMin = -4.5; defaultMax = 4.5;
-      } else if (selectedFunction === "Bukin") {
-        defaultMin = -15.0; defaultMax = -5.0;
-      }
-
-      const userMin = finalParamValues["xMinValue"];
-      const finalMin = userMin !== undefined ? userMin : defaultMin;
-
-      const userMax = finalParamValues["xMaxValue"];
-      const finalMax = userMax !== undefined ? userMax : defaultMax;
-
-      // For Beale and Bukin functions, add Y dimension parameters
-      const isBealOrBukinFunc = selectedFunction === "Beale" || selectedFunction === "Bukin";
-      let functionConfig: any = {
-        FunctionName: selectedFunction,
-        minValue: finalMin,
-        maxValue: finalMax
-      };
-      
-      if (isBealOrBukinFunc) {
-        const yDomain = getFunctionYDefaults(selectedFunction);
-        const userYMin = finalParamValues["YminValue"];
-        const finalYMin = userYMin !== undefined ? userYMin : yDomain.min;
-        const userYMax = finalParamValues["YmaxValue"];
-        const finalYMax = userYMax !== undefined ? userYMax : yDomain.max;
+      // Run each function sequentially
+      for (let i = 0; i < selectedFunctions.length; i++) {
+        const funcName = selectedFunctions[i];
+        currentFunctionIndexRef.current = i;
         
-        functionConfig = {
-          ...functionConfig,
-          YminValue: finalYMin,
-          YmaxValue: finalYMax
-        };
-      }
-
-      // Convert frontend param names back to backend expected names
-      const backendParamValues: Record<string, number> = { ...finalParamValues };
-      if (backendParamValues.hasOwnProperty("xMinValue")) {
-        backendParamValues.minValue = backendParamValues.xMinValue;
-        delete backendParamValues.xMinValue;
-      }
-      if (backendParamValues.hasOwnProperty("xMaxValue")) {
-        backendParamValues.maxValue = backendParamValues.xMaxValue;
-        delete backendParamValues.xMaxValue;
-      }
-
-      const request = {
-        Type: "Algorithm",
-        Body: {
-          AlgorithmName: selectedAlgorithm,
-          ParamValues: backendParamValues,
-          Steps: steps,
-          FunctionList: [functionConfig]
+        // Update status to running for current function
+        setFunctionResults(prev => prev.map((r, idx) => 
+          idx === i ? { ...r, status: "running" } : r
+        ));
+        
+        addLog(`Running ${algorithmName} on ${funcName}...`, "info");
+        
+        const result = await runFunctionTest(funcName, algorithmName!, finalParamValues);
+        
+        // Update result for this function
+        if (result.error) {
+          setFunctionResults(prev => prev.map((r, idx) => 
+            idx === i ? { ...r, status: "error", error: result.error } : r
+          ));
+        } else {
+          setFunctionResults(prev => prev.map((r, idx) => 
+            idx === i ? { ...r, status: "completed", result: result.testResult } : r
+          ));
         }
-      };
-
-      if (wsServiceRef.current) {
-        wsServiceRef.current.sendRequest(request);
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        wsServiceRef.current.sendCommand("START");
       }
+
+      setProgress(100);
+      setIsRunning(false);
+      setIsPaused(false);
+      addLog("All tests completed", "success");
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -446,6 +439,140 @@ const AlgorithmTesting: React.FC = () => {
       setIsRunning(false);
       setIsPaused(false);
     } 
+  };
+
+  const runFunctionTest = async (
+    funcName: string, 
+    algorithmName: string, 
+    finalParamValues: Record<string, number>
+  ): Promise<{ testResult?: TestResult; error?: string }> => {
+    const startTime = performance.now();
+    
+    try {
+      // Create a fresh WebSocket service instance for this function test
+      const ws = new AlgorithmWebSocketService();
+      
+      const result = await new Promise<{ testResult?: TestResult; error?: string }>(async (resolve) => {
+        await ws.connect((message: any) => {
+          if (typeof message === "string" && message === "done") {
+            console.log(`[DONE] ${funcName} execution completed`);
+            resolve({});
+            return;
+          }
+
+          if (typeof message === "object" && message !== null) {
+            if (message.type === "log") {
+              addLog(`[${funcName}] ${message.message}`, "info");
+              return;
+            }
+            
+            if (message.error) {
+              addLog(`Error (${funcName}): ${message.error}`, "error");
+              resolve({ error: message.error });
+              return;
+            }
+            
+            if (message.status) {
+              addLog(`[${funcName}] ${message.status}`, "info");
+            }
+            
+            // Handle Final Report
+            if (message.AlgorithmInfo || message.Evaluations) {
+              const endTime = performance.now();
+              const executionTimeMs = endTime - startTime;
+              const executionTimeStr = executionTimeMs < 1000 
+                ? `${executionTimeMs.toFixed(0)}ms`
+                : `${(executionTimeMs / 1000).toFixed(2)}s`;
+              
+              const testResult: TestResult = {
+                algorithm: message.AlgorithmInfo?.AlgorithmName || algorithmName,
+                status: "Completed",
+                executionTime: executionTimeStr,
+                stepsCount: message.StepsCount || 0,
+                evaluations: message.Evaluations || [],
+                paramValues: message.AlgorithmInfo?.ParamValues || {},
+                rawData: message
+              };
+              
+              addLog(`${funcName} completed with best: ${testResult.evaluations?.[testResult.evaluations.length - 1]?.FBest?.toExponential(4) || 'N/A'} (${executionTimeStr})`, "success");
+              resolve({ testResult });
+            }
+          }
+        });
+
+        // Build function config for this specific function
+        const domain = getFunctionDefaults(funcName);
+        const userMin = finalParamValues["xMinValue"];
+        const finalMin = userMin !== undefined ? userMin : domain.min;
+        const userMax = finalParamValues["xMaxValue"];
+        const finalMax = userMax !== undefined ? userMax : domain.max;
+
+        const isBealOrBukinFunc = funcName === "Beale" || funcName === "Bukin";
+        let functionConfig: any = {
+          FunctionName: funcName,
+          minValue: finalMin,
+          maxValue: finalMax
+        };
+        
+        if (isBealOrBukinFunc) {
+          const yDomain = getFunctionYDefaults(funcName);
+          const userYMin = finalParamValues["YminValue"];
+          const finalYMin = userYMin !== undefined ? userYMin : yDomain.min;
+          const userYMax = finalParamValues["YmaxValue"];
+          const finalYMax = userYMax !== undefined ? userYMax : yDomain.max;
+          
+          functionConfig = {
+            ...functionConfig,
+            YminValue: finalYMin,
+            YmaxValue: finalYMax
+          };
+        }
+
+        // Convert frontend param names back to backend expected names
+        const backendParamValues: Record<string, number> = { ...finalParamValues };
+        if (backendParamValues.hasOwnProperty("xMinValue")) {
+          backendParamValues.minValue = backendParamValues.xMinValue;
+          delete backendParamValues.xMinValue;
+        }
+        if (backendParamValues.hasOwnProperty("xMaxValue")) {
+          backendParamValues.maxValue = backendParamValues.xMaxValue;
+          delete backendParamValues.xMaxValue;
+        }
+
+        const userDefinedGenerations = finalParamValues["generations"] || finalParamValues["iterations"];
+        const steps = userDefinedGenerations ? userDefinedGenerations : 100;
+
+        console.log(`[${funcName}] Request config:`, {
+          selectedAlgorithm,
+          steps,
+          userDefinedGenerations,
+          finalParamValues,
+          backendParamValues
+        });
+
+        const request = {
+          Type: "Algorithm",
+          Body: {
+            AlgorithmName: selectedAlgorithm,
+            ParamValues: backendParamValues,
+            Steps: steps,
+            FunctionList: [functionConfig]
+          }
+        };
+
+        console.log(`[${funcName}] Sending request:`, request);
+
+        ws.sendRequest(request);
+        await new Promise(res => setTimeout(res, 300));
+        ws.sendCommand("START");
+      });
+
+      ws.disconnect();
+      return result;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Unknown error";
+      return { error: msg };
+    }
   };
 
   const stopTest = (): void => {
@@ -504,9 +631,9 @@ const AlgorithmTesting: React.FC = () => {
             onAlgorithmChange={setSelectedAlgorithm}
             disabled={isRunning}
           />
-          <FunctionSelector
-            selectedFunction={selectedFunction}
-            onFunctionChange={setSelectedFunction}
+          <MultiFunctionSelector
+            selectedFunctions={selectedFunctions}
+            onFunctionsChange={setSelectedFunctions}
             disabled={isRunning}
           />
           {algorithmParams.length > 0 && (
@@ -528,7 +655,28 @@ const AlgorithmTesting: React.FC = () => {
         </div>
         <div className="log-panel">
           <LogsPanel logs={logs} onClear={clearLogs} />
-          <TestResults results={testResults} />
+          {functionResults.length === 0 && <p className="muted-text">Select an algorithm and functions to run tests.</p>}
+          {functionResults.some(r => r.status === "completed") && (
+            <div className="button-group" style={{ marginBottom: '15px' }}>
+              <button
+                onClick={downloadAlgorithmReportPDF}
+                className="button button-primary button-small button-inline"
+              >
+                📄 Download Complete Report PDF
+              </button>
+            </div>
+          )}
+          <div className="function-results-stack">
+            {functionResults.map((r, idx) => (
+              <FunctionResultCard
+                key={idx}
+                functionName={r.functionName}
+                status={r.status}
+                result={r.result}
+                error={r.error}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>

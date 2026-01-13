@@ -133,14 +133,14 @@ namespace AlgorithmTester.Infrastructure.Reports
             document.Add(table);
             document.Add(new Paragraph(" "));
 
-            // Generation-by-generation progress
-            var genSectionFont = new Font(FontFactory.GetFont(FontName, SectionFontSize, Font.BOLD));
-            var genSection = new Paragraph("Generation Progress", genSectionFont) { SpacingBefore = 15, SpacingAfter = 10 };
-            document.Add(genSection);
-
-            if (report.Evaluations.Count > 0)
+            // Loop through all function evaluations
+            foreach (var evaluation in report.Evaluations)
             {
-                var evaluation = report.Evaluations[0];
+                // Function-specific section header
+                var funcSectionFont = new Font(FontFactory.GetFont(FontName, SectionFontSize, Font.BOLD));
+                var funcSection = new Paragraph($"Generation Progress - {evaluation.Function}", funcSectionFont) { SpacingBefore = 15, SpacingAfter = 10 };
+                document.Add(funcSection);
+
                 var genTable = new PdfPTable(3) { WidthPercentage = 100 };
                 genTable.SetWidths(new float[] { 25, 35, 40 });
 
@@ -175,13 +175,15 @@ namespace AlgorithmTester.Infrastructure.Reports
             var section = new Paragraph("Final Results", sectionFont) { SpacingBefore = 15, SpacingAfter = 10 };
             document.Add(section);
 
-            if (report.Evaluations.Count > 0)
+            foreach (var evaluation in report.Evaluations)
             {
-                var evaluation = report.Evaluations[0];
+                var subsectionFont = new Font(FontFactory.GetFont(FontName, SubsectionFontSize, Font.BOLD));
+                var subsection = new Paragraph(evaluation.Function, subsectionFont) { SpacingBefore = 10, SpacingAfter = 5 };
+                document.Add(subsection);
+
                 var table = new PdfPTable(2) { WidthPercentage = 100 };
                 table.SetWidths(new float[] { 30, 70 });
 
-                AddTableRow(table, "Function:", evaluation.Function, true);
                 AddTableRow(table, "Final Best Fitness:", string.Format("{0:E6}", evaluation.FBest), true);
                 AddTableRow(table, "Total Evaluations:", evaluation.Step.ToString(), true);
 
@@ -192,6 +194,7 @@ namespace AlgorithmTester.Infrastructure.Reports
                 }
 
                 document.Add(table);
+                document.Add(new Paragraph(" "));
             }
         }
 

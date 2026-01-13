@@ -6,6 +6,7 @@ import AlgorithmService, { Algorithm, AlgorithmParam } from "../services/Algorit
 import AlgorithmWebSocketService from "../services/AlgorithmWebSocketService";
 import { Log } from "../components/LogEntry";
 import { LogsPanel } from "../components/LogsPanel";
+import { MultiAlgorithmSelector } from "../components/MultiAlgorithmSelector";
 import "../css/AlgorithmTesting.css";
 
 const BEST_PARAM_PRESETS: Record<string, Record<string, number>> = {
@@ -81,6 +82,7 @@ interface RunResult {
 
 const FunctionTesting: React.FC = () => {
   const [algorithms, setAlgorithms] = useState<Algorithm[]>([]);
+  const [selectedAlgorithms, setSelectedAlgorithms] = useState<string[]>([]);
   const [selectedFunction, setSelectedFunction] = useState<string>("Sphere");
   const [results, setResults] = useState<RunResult[]>([]);
   const [logs, setLogs] = useState<Log[]>([]);
@@ -155,6 +157,8 @@ const FunctionTesting: React.FC = () => {
     const load = async () => {
       const list = await AlgorithmService.getAlgorithms();
       setAlgorithms(list);
+      // Auto-select all algorithms on load
+      setSelectedAlgorithms(list.map(a => a.id));
     };
     load();
     return () => {
@@ -320,6 +324,11 @@ const FunctionTesting: React.FC = () => {
       return;
     }
 
+    if (selectedAlgorithms.length === 0) {
+      addLog("Please select at least one algorithm", "error");
+      return;
+    }
+
     // Fresh start
     cancelRef.current = false;
     pauseRef.current = false;
@@ -327,13 +336,16 @@ const FunctionTesting: React.FC = () => {
     setIsRunning(true);
     setIsPaused(false);
     setLogs([]);
-    setResults(algorithms.map(a => ({ algorithmId: a.id, algorithmName: a.name, status: "pending" })));
+    
+    // Only test selected algorithms
+    const algosList = algorithms.filter(a => selectedAlgorithms.includes(a.id));
+    setResults(algosList.map(a => ({ algorithmId: a.id, algorithmName: a.name, status: "pending" })));
     addLog(`Starting benchmark: ${selectedFunction}`, "info");
-    addLog(`Running ${algorithms.length} algorithm(s) with tuned parameters`, "info");
+    addLog(`Running ${algosList.length} algorithm(s) with tuned parameters`, "info");
 
     try {
-      for (let i = currentAlgoIndexRef.current; i < algorithms.length; i++) {
-        const algo = algorithms[i];
+      for (let i = currentAlgoIndexRef.current; i < algosList.length; i++) {
+        const algo = algosList[i];
         currentAlgoIndexRef.current = i;
         
         if (cancelRef.current) {
@@ -415,10 +427,16 @@ const FunctionTesting: React.FC = () => {
     <div className="algorithm-testing-container function-testing">
       <div className="header page-header">
         <h1>Function Testing</h1>
-        <p>Run every algorithm with tuned defaults against the selected benchmark.</p>
+        <p>Select algorithms to run against the selected benchmark function.</p>
       </div>
       <div className="testing-layout">
         <div className="control-section sticky-controls">
+          <MultiAlgorithmSelector
+            algorithms={algorithms}
+            selectedAlgorithms={selectedAlgorithms}
+            onAlgorithmsChange={setSelectedAlgorithms}
+            disabled={isRunning}
+          />
           <RunControls
             selectedFunction={selectedFunction}
             isRunning={isRunning}
