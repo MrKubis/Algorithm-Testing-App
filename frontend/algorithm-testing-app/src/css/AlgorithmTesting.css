@@ -384,6 +384,139 @@
   flex-shrink: 0;
 }
 
+.function-results-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.run-button-fixed {
+  min-height: 48px;
+  max-height: 48px;
+  height: 48px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.function-testing .page-header {
+  text-align: center;
+  color: white;
+  margin-bottom: 20px;
+}
+
+.function-testing .page-header h1 {
+  font-size: 2.2rem;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+.function-testing .page-header p {
+  opacity: 0.92;
+}
+
+.sticky-controls {
+  position: sticky;
+  top: 16px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.log-card h3 {
+  margin-top: 0;
+}
+
+.logs-container.compact {
+  max-height: 220px;
+  font-size: 0.9rem;
+  background: #f9f9f9;
+}
+
+.log-line {
+  display: block;
+  margin-bottom: 8px;
+  color: #334155;
+}
+
+.log-line:last-child {
+  margin-bottom: 0;
+}
+
+.log-line-info {
+  color: #3b82f6;
+}
+
+.log-line-warning {
+  color: #e0a800;
+}
+
+.log-line-error {
+  color: #e74c3c;
+}
+
+.log-time {
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+.muted-text {
+  color: #94a3b8;
+}
+
+.function-results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.result-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  background: #e5e7eb;
+  color: #334155;
+}
+
+.status-pending {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.status-running {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.status-completed {
+  background: #ecfdf3;
+  color: #16a34a;
+}
+
+.status-error {
+  background: #fef2f2;
+  color: #e11d48;
+}
+
+.error-text {
+  color: #e11d48;
+  font-weight: 700;
+}
+
 /* Responsive Design */
 @media (max-width: 1024px) {
   .testing-layout {

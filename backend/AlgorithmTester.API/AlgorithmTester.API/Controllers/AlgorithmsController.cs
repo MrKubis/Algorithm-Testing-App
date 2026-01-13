@@ -40,6 +40,8 @@ public class AlgorithmsController : ControllerBase
                     geneCount: 2,
                     minValue: -5.0,
                     maxValue: 5.0,
+                    yMinValue: -5.0,
+                    yMaxValue: 5.0,
                     mutationProbability: 0.01,
                     crossoverProbability: 0.8,
                     fitnessFunction: x => Math.Pow(x[0], 2) + Math.Pow(x[1], 2)
@@ -50,6 +52,8 @@ public class AlgorithmsController : ControllerBase
                     dimensions: 2,
                     minValue: -5.0,
                     maxValue: 5.0,
+                    yMinValue: -5.0,
+                    yMaxValue: 5.0,
                     w: 0.5,
                     c1: 1.5,
                     c2: 1.5,

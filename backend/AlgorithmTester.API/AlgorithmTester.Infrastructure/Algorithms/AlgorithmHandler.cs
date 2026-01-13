@@ -107,10 +107,24 @@ namespace AlgorithmTester.Infrastructure.Algorithms
                         
                         Func<double[], double> function = FunctionFactory.Create(request.FunctionName);
                         reportGenerator.CreateNewFunctionReport(request);
+                        
+                        var functionInfo = new FunctionInfo
+                        {
+                            FunctionName = request.FunctionName,
+                            minValue = request.minValue,
+                            maxValue = request.maxValue
+                        };
+                        
                         for (int i = 0; i < request.AlgorithmList.Length; i++)
                         {
                             cancellationToken.ThrowIfCancellationRequested();
-                            IOptimizationAlgorithm algorithm = AlgorithmFactory.Create(request.AlgorithmList[i].AlgorithmName, request.AlgorithmList[i].ParamValues, 0,request.Steps,request.minValue,request.maxValue ,function);
+                            IOptimizationAlgorithm algorithm = AlgorithmFactory.Create(
+                                request.AlgorithmList[i].AlgorithmName, 
+                                request.AlgorithmList[i].ParamValues, 
+                                0,
+                                request.Steps,
+                                functionInfo,
+                                function);
                             Argument[] X = HandleArguments(null, algorithm);
                             reportGenerator.CreateEvaluation(request.AlgorithmList[i].AlgorithmName, request.minValue, request.maxValue);
                             for(int j = 0 ; j < request.Steps; j++)
