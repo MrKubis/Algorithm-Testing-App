@@ -38,7 +38,8 @@ namespace AlgorithmTester.Infrastructure.Algorithms.Particle_Swarm_Optimization
         private readonly int _dimensions;
         private readonly double _minValue;
         private readonly double _maxValue;
-
+        private readonly double _yMinValue;
+        private readonly double _yMaxValue;
         private readonly double _w;
         private readonly double _c1;
         private readonly double _c2;
@@ -53,6 +54,8 @@ namespace AlgorithmTester.Infrastructure.Algorithms.Particle_Swarm_Optimization
             double dimensions,
             double minValue,
             double maxValue,
+            double yMinValue,
+            double yMaxValue,
             double w,
             double c1,
             double c2,
@@ -63,6 +66,8 @@ namespace AlgorithmTester.Infrastructure.Algorithms.Particle_Swarm_Optimization
             _dimensions = (int)dimensions;
             _minValue = minValue;
             _maxValue = maxValue;
+            _yMinValue = yMinValue;
+            _yMaxValue = yMaxValue;
             _w = w;
             _c1 = c1;
             _c2 = c2;
@@ -166,6 +171,10 @@ namespace AlgorithmTester.Infrastructure.Algorithms.Particle_Swarm_Optimization
             {
                 for (int d = 0; d < _dimensions; d++)
                 {
+                    // Use Y bounds for second dimension if dimensions > 1
+                    double minVal = (d == 1) ? _yMinValue : _minValue;
+                    double maxVal = (d == 1) ? _yMaxValue : _maxValue;
+
                     double r1 = _random.NextDouble();
                     double r2 = _random.NextDouble();
 
@@ -175,14 +184,14 @@ namespace AlgorithmTester.Infrastructure.Algorithms.Particle_Swarm_Optimization
                     p.Velocity[d] = (_w * p.Velocity[d]) + cognitive + social;
                     p.Position[d] += p.Velocity[d];
 
-                    if (p.Position[d] < _minValue)
+                    if (p.Position[d] < minVal)
                     {
-                        p.Position[d] = _minValue;
+                        p.Position[d] = minVal;
                         p.Velocity[d] *= -0.5;
                     }
-                    else if (p.Position[d] > _maxValue)
+                    else if (p.Position[d] > maxVal)
                     {
-                        p.Position[d] = _maxValue;
+                        p.Position[d] = maxVal;
                         p.Velocity[d] *= -0.5;
                     }
                 }
@@ -234,7 +243,10 @@ namespace AlgorithmTester.Infrastructure.Algorithms.Particle_Swarm_Optimization
                 {
                     for (int j = 0; j < _dimensions; j++)
                     {
-                        p.Position[j] = _minValue + _random.NextDouble() * (_maxValue - _minValue);
+                        // Use Y bounds for second dimension if dimensions > 1
+                        double minVal = (j == 1) ? _yMinValue : _minValue;
+                        double maxVal = (j == 1) ? _yMaxValue : _maxValue;
+                        p.Position[j] = minVal + _random.NextDouble() * (maxVal - minVal);
                     }
                 }
 
@@ -242,7 +254,9 @@ namespace AlgorithmTester.Infrastructure.Algorithms.Particle_Swarm_Optimization
 
                 for (int j = 0; j < _dimensions; j++)
                 {
-                    p.Velocity[j] = (_random.NextDouble() - 0.5) * (_maxValue - _minValue) * 0.1;
+                    double minVal = (j == 1) ? _yMinValue : _minValue;
+                    double maxVal = (j == 1) ? _yMaxValue : _maxValue;
+                    p.Velocity[j] = (_random.NextDouble() - 0.5) * (maxVal - minVal) * 0.1;
                 }
 
                 swarm.Add(p);

@@ -71,7 +71,7 @@ namespace AlgorithmTester.Infrastructure.Algorithms
                             
                             Func<double[], double> function = FunctionFactory.Create(request.FunctionList[i].FunctionName);
                             IOptimizationAlgorithm algorithm = AlgorithmFactory.Create(
-                                request.AlgorithmName, request.ParamValues, request.Step, request.Steps, request.FunctionList[i].minValue, request.FunctionList[i].maxValue , function);
+                                request.AlgorithmName, request.ParamValues, request.Step, request.Steps, request.FunctionList[i], function);
                             Argument[] x = HandleArguments(request.Arguments, algorithm);
 
                             reportGenerator.CreateEvaluation(request.FunctionList[i].FunctionName, request.FunctionList[i].minValue, request.FunctionList[i].maxValue);

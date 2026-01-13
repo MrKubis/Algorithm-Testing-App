@@ -30,7 +30,30 @@ const AlgorithmTesting: React.FC = () => {
       default: return { min: -5.0, max: 5.0 };
     }
   };
+  // Y-domain defaults (for 2D functions)
+  const getFunctionYDefaults = (funcName: string) => {
+    switch (funcName) {
+      case "Bukin": return { min: -3.0, max: 3.0 }; // Bukin y in [-3,3]
+      case "Beale": return getFunctionDefaults(funcName); // Same as X for Beale
+      default: return getFunctionDefaults(funcName);
+    }
+  };
   const currentDefaults = getFunctionDefaults(selectedFunction);
+  const currentYDefaults = getFunctionYDefaults(selectedFunction);
+
+  // Update algorithm parameters with domain boundaries based on selected function
+  const updateParamsWithDomainBoundaries = (params: AlgorithmParam[], funcName: string) => {
+    const domain = getFunctionDefaults(funcName);
+    return params.map(param => {
+      if (param.name === "minValue") {
+        return { ...param, lowerBoundary: domain.min, upperBoundary: domain.max };
+      }
+      if (param.name === "maxValue") {
+        return { ...param, lowerBoundary: domain.min, upperBoundary: domain.max };
+      }
+      return param;
+    });
+  };
 
   useEffect(() => {
     const fetchAlgorithms = async () => {
@@ -60,6 +83,7 @@ const AlgorithmTesting: React.FC = () => {
   const [testResults, setTestResults] = useState<TestResult | null>(null);
   const [logs, setLogs] = useState<Log[]>([]);
   const [progress, setProgress] = useState<number>(0);
+  const [isBealeOrBukin, setIsBealeOrBukin] = useState<boolean>(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Load algorithm parameters
@@ -70,14 +94,134 @@ const AlgorithmTesting: React.FC = () => {
         return;
       }
       try {
-        const details = await AlgorithmService.getAlgorithmDetails(selectedAlgorithm);
-        setAlgorithmParams(details.params);
+        let details = await AlgorithmService.getAlgorithmDetails(selectedAlgorithm);
+        // Apply domain boundaries based on selected function
+        let updatedParams = updateParamsWithDomainBoundaries(details.params, selectedFunction);
+        
+        // For Beale and Bukin functions, add Y dimension parameters
+        const isBealOrBukinFunc = selectedFunction === "Beale" || selectedFunction === "Bukin";
+        if (isBealOrBukinFunc) {
+          const domain = getFunctionDefaults(selectedFunction);
+          const yDomain = getFunctionYDefaults(selectedFunction);
+          // Add Y min/max parameters
+          updatedParams = [
+            ...updatedParams,
+            {
+              name: "YminValue",
+              description: "Y dimension minimum value",
+              defaultValue: yDomain.min,
+              lowerBoundary: yDomain.min,
+              upperBoundary: yDomain.max
+            },
+            {
+              name: "YmaxValue",
+              description: "Y dimension maximum value",
+              defaultValue: yDomain.max,
+              lowerBoundary: yDomain.min,
+              upperBoundary: yDomain.max
+            }
+          ];
+        }
+        
+        setAlgorithmParams(updatedParams);
       } catch (error) {
         addLog(`Failed to load params: ${error}`, "error");
       }
     };
     loadAlgorithmDetails();
-  }, [selectedAlgorithm]);
+  }, [selectedAlgorithm, selectedFunction]);
+
+  // Update domain boundaries when selected function changes
+  useEffect(() => {
+    if (algorithmParams.length > 0) {
+      const domain = getFunctionDefaults(selectedFunction);
+      const yDomain = getFunctionYDefaults(selectedFunction);
+      const isBealOrBukinFunc = selectedFunction === "Beale" || selectedFunction === "Bukin";
+      
+      let updatedParams = updateParamsWithDomainBoundaries(algorithmParams, selectedFunction);
+      
+      // Update Y parameters if they exist, or add them if Beale/Bukin
+      if (isBealOrBukinFunc) {
+        const hasYParams = updatedParams.some(p => p.name === "YminValue" || p.name === "YmaxValue");
+        if (!hasYParams) {
+          updatedParams = [
+            ...updatedParams,
+            {
+              name: "YminValue",
+              description: "Y dimension minimum value",
+              defaultValue: yDomain.min,
+              lowerBoundary: yDomain.min,
+              upperBoundary: yDomain.max
+            },
+            {
+              name: "YmaxValue",
+              description: "Y dimension maximum value",
+              defaultValue: yDomain.max,
+              lowerBoundary: yDomain.min,
+              upperBoundary: yDomain.max
+            }
+          ];
+        } else {
+          // Update existing Y parameters with new domain
+          updatedParams = updatedParams.map(p => {
+            if (p.name === "YminValue" || p.name === "YmaxValue") {
+              return { ...p, lowerBoundary: yDomain.min, upperBoundary: yDomain.max };
+            }
+            return p;
+          });
+        }
+      } else {
+        // Remove Y parameters if not Beale/Bukin
+        updatedParams = updatedParams.filter(p => p.name !== "YminValue" && p.name !== "YmaxValue");
+      }
+      
+      setAlgorithmParams(updatedParams);
+      
+      // Update param values with new domain
+      setParamValues(prev => {
+        const updated: Record<string, number> = {
+          ...prev,
+          minValue: domain.min,
+          maxValue: domain.max
+        };
+        
+        if (isBealOrBukinFunc) {
+          updated.YminValue = yDomain.min;
+          updated.YmaxValue = yDomain.max;
+        } else {
+          // Remove Y values if not Beale/Bukin
+          delete updated.YminValue;
+          delete updated.YmaxValue;
+        }
+        
+        return updated;
+      });
+    }
+  }, [selectedFunction]);
+
+  // Auto-set dimensions for Beale and Bukin functions (they require exactly 2 dimensions)
+  useEffect(() => {
+    const isBealOrBukinFunc = selectedFunction === "Beale" || selectedFunction === "Bukin";
+    setIsBealeOrBukin(isBealOrBukinFunc);
+    
+    if (isBealOrBukinFunc && algorithmParams.length > 0) {
+      // For Genetic Algorithm, set geneCount to 2
+      // For PSO, set dimensions to 2
+      const updatedParams = { ...paramValues };
+      let updated = false;
+      if (updatedParams.hasOwnProperty("geneCount") && updatedParams["geneCount"] !== 2) {
+        updatedParams["geneCount"] = 2;
+        updated = true;
+      }
+      if (updatedParams.hasOwnProperty("dimensions") && updatedParams["dimensions"] !== 2) {
+        updatedParams["dimensions"] = 2;
+        updated = true;
+      }
+      if (updated) {
+        setParamValues(updatedParams);
+      }
+    }
+  }, [selectedFunction, algorithmParams]);
 
   const addLog = (message: string, type: Log["type"] = "info"): void => {
     setLogs((prev) => [...prev, { message, type, timestamp: new Date().toLocaleTimeString() }]);
@@ -89,7 +233,18 @@ const AlgorithmTesting: React.FC = () => {
       return;
     }
 
-    const paramErrors = AlgorithmService.validateParams(paramValues, algorithmParams);
+    // For Beale and Bukin, ensure dimensions are set to 2
+    const isBealOrBukinFunc = selectedFunction === "Beale" || selectedFunction === "Bukin";
+    const finalParamValues = { ...paramValues };
+    if (isBealOrBukinFunc) {
+      if (selectedAlgorithm.includes("Genetic")) {
+        finalParamValues["geneCount"] = 2;
+      } else if (selectedAlgorithm.includes("Particle")) {
+        finalParamValues["dimensions"] = 2;
+      }
+    }
+
+    const paramErrors = AlgorithmService.validateParams(finalParamValues, algorithmParams);
     if (paramErrors.length > 0) {
       paramErrors.forEach(error => addLog(error, "error"));
       return;
@@ -106,23 +261,41 @@ const AlgorithmTesting: React.FC = () => {
     addLog(`Starting test for ${algorithmName}...`, "info");
 
     try {
-      if (wsServiceRef.current) {
-        // Disconnect existing to ensure clean slate
-        if(wsServiceRef.current.isConnected()) {
-             wsServiceRef.current.disconnect();
-        }
+      // Create a fresh WebSocket service instance for this run
+      wsServiceRef.current = new AlgorithmWebSocketService();
+      
+      console.log("=".repeat(60));
+      console.log(`[Algorithm Started] ${algorithmName} with function: ${selectedFunction}`);
+      console.log(`[Parameters]:`, finalParamValues);
+      console.log("=".repeat(60));
 
+      if (wsServiceRef.current) {
         await wsServiceRef.current.connect((message: any) => {
+          console.log("[WebSocket Message Received]", message);
           
           if (typeof message === "string" && message === "done") {
+             console.log("[DONE] Algorithm execution completed");
              addLog("Algorithm execution completed", "success");
+             // Ensure UI updates by setting both flags
              setIsRunning(false);
              setIsPaused(false);
+             setProgress(100);
              return;
           }
 
           // Handle Object Messages
           if (typeof message === "object" && message !== null) {
+            console.log("[Object Message Type Check]", {
+              hasType: message.type,
+              hasError: message.error,
+              hasStatus: message.status,
+              hasProgress: message.progress,
+              hasAlgorithmInfo: message.AlgorithmInfo,
+              hasFunctionInfo: message.FunctionInfo,
+              hasAlgorithmReport: message.AlgorithmReport,
+              fullObject: message
+            });
+
             if (message.type === "log") {
               addLog(message.message, "info");
               return;
@@ -140,14 +313,22 @@ const AlgorithmTesting: React.FC = () => {
             }
             
             // Handle Final Report
-            if (message.AlgorithmInfo || message.FunctionInfo || message.AlgorithmReport) {
+            if (message.AlgorithmInfo || message.Evaluations) {
+               console.log("[Final Report Received]", {
+                 algorithmInfo: message.AlgorithmInfo,
+                 evaluations: message.Evaluations,
+                 stepsCount: message.StepsCount,
+                 fullPayload: message
+               });
                
                setTestResults({
-                  algorithm: algorithmName || "Unknown",
+                  algorithm: message.AlgorithmInfo?.AlgorithmName || algorithmName || "Unknown",
                   status: "Completed",
-                  executionTime: "0", 
-                  operationsCount: 0, 
-                  memoryUsed: "0"
+                  executionTime: "N/A",
+                  stepsCount: message.StepsCount || 0,
+                  evaluations: message.Evaluations || [],
+                  paramValues: message.AlgorithmInfo?.ParamValues || {},
+                  rawData: message
                 });
                 setProgress(100);
             }
@@ -155,7 +336,8 @@ const AlgorithmTesting: React.FC = () => {
         });
       }
 
-      const userDefinedGenerations = paramValues["generations"]; 
+      // Handle both "generations" (for Genetic) and "iterations" (for PSO)
+      const userDefinedGenerations = finalParamValues["generations"] || finalParamValues["iterations"];
       const steps = userDefinedGenerations ? userDefinedGenerations : 100;
       let defaultMin = -5.0;
       let defaultMax = 5.0;
@@ -170,25 +352,41 @@ const AlgorithmTesting: React.FC = () => {
         defaultMin = -15.0; defaultMax = -5.0;
       }
 
-      const userMin = paramValues["minValue"];
+      const userMin = finalParamValues["minValue"];
       const finalMin = userMin !== undefined ? userMin : defaultMin;
 
-      const userMax = paramValues["maxValue"];
+      const userMax = finalParamValues["maxValue"];
       const finalMax = userMax !== undefined ? userMax : defaultMax;
+
+      // For Beale and Bukin functions, add Y dimension parameters
+      const isBealOrBukinFunc = selectedFunction === "Beale" || selectedFunction === "Bukin";
+      let functionConfig: any = {
+        FunctionName: selectedFunction,
+        minValue: finalMin,
+        maxValue: finalMax
+      };
+      
+      if (isBealOrBukinFunc) {
+        const yDomain = getFunctionYDefaults(selectedFunction);
+        const userYMin = finalParamValues["YminValue"];
+        const finalYMin = userYMin !== undefined ? userYMin : yDomain.min;
+        const userYMax = finalParamValues["YmaxValue"];
+        const finalYMax = userYMax !== undefined ? userYMax : yDomain.max;
+        
+        functionConfig = {
+          ...functionConfig,
+          YminValue: finalYMin,
+          YmaxValue: finalYMax
+        };
+      }
 
       const request = {
         Type: "Algorithm",
         Body: {
           AlgorithmName: selectedAlgorithm,
-          ParamValues: paramValues,
+          ParamValues: finalParamValues,
           Steps: steps,
-          FunctionList: [
-            {
-              FunctionName: selectedFunction,
-              minValue: finalMin,
-              maxValue: finalMax
-            }
-          ]
+          FunctionList: [functionConfig]
         }
       };
 
@@ -275,8 +473,13 @@ const AlgorithmTesting: React.FC = () => {
               disabled={isRunning}
               defaultOverrides={{
                 minValue: currentDefaults.min,
-                maxValue: currentDefaults.max
+                maxValue: currentDefaults.max,
+                ...(isBealeOrBukin && {
+                  YminValue: currentYDefaults.min,
+                  YmaxValue: currentYDefaults.max
+                })
               }}
+              disabledParams={isBealeOrBukin ? ["geneCount", "dimensions", "YminValue", "YmaxValue"] : []}
             />
           )}
         </div>

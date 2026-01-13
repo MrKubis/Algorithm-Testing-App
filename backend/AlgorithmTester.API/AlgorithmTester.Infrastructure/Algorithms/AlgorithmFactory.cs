@@ -10,11 +10,15 @@ public class AlgorithmFactory
     public static IOptimizationAlgorithm Create(string algorithmName, 
                                                 Dictionary<string,double> paramValues,
                                                 int step,
-                                                int steps , 
-                                                double minValue,
-                                                double maxValue,
+                                                int steps,
+                                                FunctionInfo functionInfo,
                                                 Func<double[], double> fitnessFunction)
     {
+        double minValue = functionInfo.minValue;
+        double maxValue = functionInfo.maxValue;
+        double yMinValue = functionInfo.YminValue ?? minValue;
+        double yMaxValue = functionInfo.YmaxValue ?? maxValue;
+
         return algorithmName switch
         {
             "Genetic" => new GeneticAlgorithm(
@@ -24,6 +28,8 @@ public class AlgorithmFactory
                 paramValues["geneCount"],
                 minValue,
                 maxValue,
+                yMinValue,
+                yMaxValue,
                 paramValues["mutationProbability"],
                 paramValues["crossoverProbability"],
                 fitnessFunction
@@ -34,6 +40,8 @@ public class AlgorithmFactory
                 paramValues["dimensions"],
                 minValue,
                 maxValue,
+                yMinValue,
+                yMaxValue,
                 paramValues["w"],
                 paramValues["c1"],
                 paramValues["c2"],

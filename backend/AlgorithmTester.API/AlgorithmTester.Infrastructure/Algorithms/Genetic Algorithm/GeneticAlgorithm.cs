@@ -33,6 +33,8 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
     private readonly int _geneCount;
     private readonly double _minValue;
     private readonly double _maxValue;
+    private readonly double _yMinValue;
+    private readonly double _yMaxValue;
     private readonly double _mutationProbability;
     private readonly double _crossoverProbability;
     private readonly Func<double[], double> _fitnessFunction;
@@ -48,6 +50,8 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
         double geneCount,
         double minValue,
         double maxValue,
+        double yMinValue,
+        double yMaxValue,
         double mutationProbability,
         double crossoverProbability,
         Func<double[], double> fitnessFunction)
@@ -58,6 +62,8 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
         _geneCount = (int)geneCount;
         _minValue = minValue;
         _maxValue = maxValue;
+        _yMinValue = yMinValue;
+        _yMaxValue = yMaxValue;
         _mutationProbability = mutationProbability;
         _crossoverProbability = crossoverProbability;
         _fitnessFunction = fitnessFunction;
@@ -277,7 +283,13 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
         for (int i = 0; i < _populationSize; i++)
         {
             var ind = new Individual(_geneCount);
-            for (int j = 0; j < _geneCount; j++) ind.Genes[j] = _minValue + (_random.NextDouble() * (_maxValue - _minValue));
+            for (int j = 0; j < _geneCount; j++)
+            {
+                // Use Y bounds for second dimension if geneCount > 1
+                double minVal = (j == 1) ? _yMinValue : _minValue;
+                double maxVal = (j == 1) ? _yMaxValue : _maxValue;
+                ind.Genes[j] = minVal + (_random.NextDouble() * (maxVal - minVal));
+            }
             pop.Add(ind);
         }
         return pop;
@@ -297,7 +309,13 @@ public class GeneticAlgorithm : IOptimizationAlgorithm
             else
             {
                 var ind = new Individual(_geneCount);
-                for (int j = 0; j < _geneCount; j++) ind.Genes[j] = _minValue + (_random.NextDouble() * (_maxValue - _minValue));
+                for (int j = 0; j < _geneCount; j++)
+                {
+                    // Use Y bounds for second dimension if geneCount > 1
+                    double minVal = (j == 1) ? _yMinValue : _minValue;
+                    double maxVal = (j == 1) ? _yMaxValue : _maxValue;
+                    ind.Genes[j] = minVal + (_random.NextDouble() * (maxVal - minVal));
+                }
                 population.Add(ind);
             }
         }

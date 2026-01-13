@@ -6,6 +6,8 @@ export interface TestFunction {
   description: string;
   minValue: number;
   maxValue: number;
+  yMinValue?: number;
+  yMaxValue?: number;
 }
 
 interface FunctionSelectorProps {
@@ -47,6 +49,8 @@ export const FunctionSelector: React.FC<FunctionSelectorProps> = ({
       description: "2-dimensional function with steep ridges",
       minValue: -4.5,
       maxValue: 4.5,
+      yMinValue: -4.5,
+      yMaxValue: 4.5,
     },
     {
       id: "Bukin",
@@ -54,6 +58,8 @@ export const FunctionSelector: React.FC<FunctionSelectorProps> = ({
       description: "2-dimensional function with a narrow valley",
       minValue: -15.0,
       maxValue: -5.0,
+      yMinValue: -3.0,
+      yMaxValue: 3.0,
     },
   ];
 
@@ -85,7 +91,10 @@ export const FunctionSelector: React.FC<FunctionSelectorProps> = ({
           <h3>{selected.name}</h3>
           <p>{selected.description}</p>
           <p style={{ fontSize: "0.9rem", color: "#666" }}>
-            <strong>Domain:</strong> [{selected.minValue}, {selected.maxValue}]
+            <strong>Domain X:</strong> [{selected.minValue}, {selected.maxValue}]
+            {selected.yMinValue !== undefined && selected.yMaxValue !== undefined && (
+              <><br /><strong>Domain Y:</strong> [{selected.yMinValue}, {selected.yMaxValue}]</>
+            )}
           </p>
         </div>
       )}

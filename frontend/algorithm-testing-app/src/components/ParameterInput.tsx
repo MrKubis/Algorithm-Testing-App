@@ -6,6 +6,7 @@ interface ParameterInputProps {
   onParamChange: (params: Record<string, number>) => void;
   disabled?: boolean;
   defaultOverrides?: Record<string, number>;
+  disabledParams?: string[];
 }
 
 export const ParameterInput: React.FC<ParameterInputProps> = ({
@@ -13,18 +14,48 @@ export const ParameterInput: React.FC<ParameterInputProps> = ({
   onParamChange,
   disabled = false,
   defaultOverrides = {},
+  disabledParams = [],
 }) => {
   const [paramValues, setParamValues] = useState<Record<string, number>>({});
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Initialize parameter values
+  // Initialize parameter values only once on mount
   useEffect(() => {
-    const initialValues: Record<string, number> = {};
-    params.forEach((param) => {
-      initialValues[param.name] = param.defaultValue || (param.lowerBoundary ?? 1);
-    });
-    setParamValues(initialValues);
-    onParamChange(initialValues);
-  }, [params, onParamChange]);
+    if (!isInitialized && params.length > 0) {
+      const initialValues: Record<string, number> = {};
+      params.forEach((param) => {
+        // Use defaultOverrides if provided, otherwise use param defaults
+        if (defaultOverrides.hasOwnProperty(param.name)) {
+          initialValues[param.name] = defaultOverrides[param.name];
+        } else {
+          initialValues[param.name] = param.defaultValue || (param.lowerBoundary ?? 1);
+        }
+      });
+      setParamValues(initialValues);
+      onParamChange(initialValues);
+      setIsInitialized(true);
+    }
+  }, [isInitialized, params.length]);
+
+  // Update values when defaultOverrides change (e.g., function switch)
+  useEffect(() => {
+    if (isInitialized && Object.keys(defaultOverrides).length > 0) {
+      setParamValues(prev => {
+        const updated = { ...prev };
+        let hasChanges = false;
+        Object.entries(defaultOverrides).forEach(([key, value]) => {
+          if (prev[key] !== value) {
+            updated[key] = value;
+            hasChanges = true;
+          }
+        });
+        if (hasChanges) {
+          onParamChange(updated);
+        }
+        return updated;
+      });
+    }
+  }, [defaultOverrides, isInitialized]);
 
   const handleParamChange = (paramName: string, value: string) => {
     const numValue = parseFloat(value);
@@ -45,6 +76,9 @@ export const ParameterInput: React.FC<ParameterInputProps> = ({
               <label htmlFor={`param-${param.name}`}>
                 {param.name}
                 <span className="param-description">{param.description}</span>
+                {disabledParams.includes(param.name) && (
+                  <span style={{ color: '#FF6B6B', marginLeft: '5px', fontSize: '0.8em' }}>(auto-set)</span>
+                )}
               </label>
               <div className="parameter-input-wrapper">
                 <input
@@ -55,7 +89,7 @@ export const ParameterInput: React.FC<ParameterInputProps> = ({
                   step="0.1"
                   value={paramValues[param.name] || ""}
                   onChange={(e) => handleParamChange(param.name, e.target.value)}
-                  disabled={disabled}
+                  disabled={disabled || disabledParams.includes(param.name)}
                   className="parameter-input"
                 />
                 <div className="parameter-bounds">
